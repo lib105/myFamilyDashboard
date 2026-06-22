@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { path: '/tasks',    emoji: '✅', label: '任务' },
   { path: '/shopping', emoji: '🛒', label: '购物' },
   { path: '/deals',    emoji: '🏷️', label: '促销' },
+  { path: '/agency-upload', emoji: '📤', label: '商家投稿' },
   { path: '/login',    emoji: '👤', label: '登录' },
 ];
 

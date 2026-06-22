@@ -585,6 +585,99 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   font-weight: 700;
 }
 
+.upload-page-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr);
+  gap: var(--spacing-lg);
+}
+
+.uploader-dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  background: #FFFDFC;
+}
+
+.uploader-dropzone input[type="file"] {
+  margin-top: var(--spacing-md);
+}
+
+.image-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
+}
+
+.image-preview-card {
+  background: #FFF9F0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.image-preview-card img {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+}
+
+.image-preview-meta {
+  padding: var(--spacing-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--font-size-xs);
+}
+
+.submission-feed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.submission-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  box-shadow: var(--shadow-card);
+}
+
+.submission-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.submission-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: #F8F9FA;
+  color: var(--color-text-light);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.submission-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+
+.submission-gallery img {
+  width: 100%;
+  height: 88px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  border: 1px solid var(--color-border);
+}
+
 /* ---------- Login Page ---------- */
 .login-page {
   min-height: 100vh;
@@ -668,6 +761,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   .page-body { padding: var(--spacing-md); }
 
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  .upload-page-grid { grid-template-columns: 1fr; }
 
   .summary-grid { grid-template-columns: repeat(2, 1fr); }
 }
