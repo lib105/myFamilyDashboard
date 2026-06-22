@@ -11,6 +11,7 @@ A colorful, kid-friendly family dashboard for travel planning, household tasks, 
 | ✅ **Tasks** | Recurring household tasks (daily/weekly/monthly) with kid reward points |
 | 🛒 **Shopping** | Shared shopping list, low-stock alerts, favourite items |
 | 🏷️ **Deals** | Promotion import from WeChat messages, auto-extraction, daily digest |
+| 📤 **Agency Upload** | Travel agency upload page for promo text, last-minute seats, and image materials |
 | 👤 **Login** | WeChat QR login placeholder (swappable for real OAuth) |
 
 ## 🚀 Getting Started
@@ -34,7 +35,7 @@ src/
 │   ├── trips/         # Trip list, detail, packing checklist, wishes
 │   ├── tasks/         # Recurring tasks, points leaderboard
 │   ├── shopping/      # Shopping list, low-stock, favourites
-│   ├── deals/         # Deal feed, daily digest, message import
+│   ├── deals/         # Deal feed, daily digest, message import, agency uploads
 │   └── auth/          # Login (WeChat QR placeholder)
 ├── App.jsx            # Router configuration
 └── main.jsx           # Entry point
@@ -55,4 +56,3 @@ src/
 - AI-powered deal extraction & price-drop alerts
 - Backend / database integration
 - Full family member role permissions
-

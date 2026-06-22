@@ -7,6 +7,7 @@ import TripWishes from './components/trips/TripWishes.jsx';
 import TaskList from './components/tasks/TaskList.jsx';
 import ShoppingList from './components/shopping/ShoppingList.jsx';
 import DealsFeed from './components/deals/DealsFeed.jsx';
+import AgencyUploadPage from './components/deals/AgencyUploadPage.jsx';
 import Login from './components/auth/Login.jsx';
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
           <Route path="/tasks" element={<TaskList />} />
           <Route path="/shopping" element={<ShoppingList />} />
           <Route path="/deals" element={<DealsFeed />} />
+          <Route path="/agency-upload" element={<AgencyUploadPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

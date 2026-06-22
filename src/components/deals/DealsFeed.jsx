@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import dealsData from '../../data/deals.json';
 import { extractDealFromMessage, groupDealsByDate, getCategoryInfo } from '../../utils/dealExtractor.js';
 
@@ -67,6 +68,9 @@ export default function DealsFeed() {
           >
             📥 导入消息
           </button>
+          <Link className="btn btn-secondary btn-sm" to="/agency-upload">
+            📤 商家投稿入口
+          </Link>
         </div>
       </div>
 
