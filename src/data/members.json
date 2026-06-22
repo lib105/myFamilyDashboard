@@ -1,0 +1,40 @@
+[
+  {
+    "id": "m1",
+    "name": "爸爸",
+    "nameEn": "Dad",
+    "role": "parent",
+    "avatar": "👨",
+    "color": "#4A90D9",
+    "points": 0
+  },
+  {
+    "id": "m2",
+    "name": "妈妈",
+    "nameEn": "Mom",
+    "role": "parent",
+    "avatar": "👩",
+    "color": "#E91E8C",
+    "points": 0
+  },
+  {
+    "id": "m3",
+    "name": "小明",
+    "nameEn": "Xiao Ming",
+    "role": "child",
+    "avatar": "👦",
+    "color": "#FF6B35",
+    "points": 120,
+    "age": 10
+  },
+  {
+    "id": "m4",
+    "name": "小花",
+    "nameEn": "Xiao Hua",
+    "role": "child",
+    "avatar": "👧",
+    "color": "#9B59B6",
+    "points": 95,
+    "age": 7
+  }
+]

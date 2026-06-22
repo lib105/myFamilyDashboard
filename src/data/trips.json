@@ -1,0 +1,95 @@
+[
+  {
+    "id": "t1",
+    "title": "日本大阪亲子游",
+    "titleEn": "Osaka Family Trip",
+    "destination": "日本大阪",
+    "season": "秋季",
+    "plannedMonth": "2024年10月",
+    "budget": 25000,
+    "currency": "CNY",
+    "status": "planning",
+    "coverEmoji": "🗾",
+    "bookingLinks": [
+      { "label": "机票比价", "url": "https://www.trip.com/flights/", "icon": "✈️" },
+      { "label": "酒店预订", "url": "https://www.trip.com/hotels/", "icon": "🏨" },
+      { "label": "签证办理", "url": "https://www.vsatsh.cn/", "icon": "📋" }
+    ],
+    "checklist": [
+      { "id": "c1", "item": "申请日本签证", "done": true, "assignee": "m2" },
+      { "id": "c2", "item": "购买机票", "done": true, "assignee": "m1" },
+      { "id": "c3", "item": "预订酒店", "done": false, "assignee": "m1" },
+      { "id": "c4", "item": "购买旅行保险", "done": false, "assignee": "m2" },
+      { "id": "c5", "item": "准备儿童护照", "done": true, "assignee": "m2" },
+      { "id": "c6", "item": "购买JR Pass", "done": false, "assignee": "m1" },
+      { "id": "c7", "item": "兑换日元", "done": false, "assignee": "m1" },
+      { "id": "c8", "item": "下载离线地图", "done": false, "assignee": "m3" },
+      { "id": "c9", "item": "准备儿童常备药", "done": false, "assignee": "m2" },
+      { "id": "c10", "item": "打印行程单", "done": false, "assignee": "m2" }
+    ],
+    "assignments": [
+      { "memberId": "m1", "task": "负责订票和交通安排" },
+      { "memberId": "m2", "task": "负责签证、保险、药品" },
+      { "memberId": "m3", "task": "负责整理自己的行李" },
+      { "memberId": "m4", "task": "选择想去的景点" }
+    ],
+    "notes": "重点游览环球影城、道顿堀美食街。孩子们最期待的行程！",
+    "wishes": [
+      { "id": "w1", "memberId": "m3", "content": "我想去环球影城玩哈利波特！", "status": "approved" },
+      { "id": "w2", "memberId": "m4", "content": "我想吃章鱼丸子和拉面！", "status": "approved" },
+      { "id": "w3", "memberId": "m3", "content": "想买任天堂的Switch游戏", "status": "pending" }
+    ]
+  },
+  {
+    "id": "t2",
+    "title": "海南三亚度假",
+    "titleEn": "Sanya Beach Holiday",
+    "destination": "海南三亚",
+    "season": "冬季",
+    "plannedMonth": "2025年1月",
+    "budget": 15000,
+    "currency": "CNY",
+    "status": "wishlist",
+    "coverEmoji": "🏖️",
+    "bookingLinks": [
+      { "label": "机票", "url": "https://www.trip.com/flights/", "icon": "✈️" },
+      { "label": "度假酒店", "url": "https://www.trip.com/hotels/", "icon": "🏨" }
+    ],
+    "checklist": [
+      { "id": "c1", "item": "选择酒店", "done": false, "assignee": "m2" },
+      { "id": "c2", "item": "查询机票价格", "done": false, "assignee": "m1" },
+      { "id": "c3", "item": "准备泳衣和防晒霜", "done": false, "assignee": "m2" }
+    ],
+    "assignments": [
+      { "memberId": "m1", "task": "机票和交通" },
+      { "memberId": "m2", "task": "酒店和行程规划" }
+    ],
+    "notes": "冬天逃离寒冷，去三亚晒太阳！孩子们可以玩沙滩。",
+    "wishes": [
+      { "id": "w1", "memberId": "m4", "content": "想在海边堆沙堡！", "status": "pending" },
+      { "id": "w2", "memberId": "m3", "content": "想去潜水看珊瑚！", "status": "pending" }
+    ]
+  },
+  {
+    "id": "t3",
+    "title": "北京故宫文化游",
+    "titleEn": "Beijing Cultural Trip",
+    "destination": "北京",
+    "season": "春季",
+    "plannedMonth": "2025年4月",
+    "budget": 8000,
+    "currency": "CNY",
+    "status": "idea",
+    "coverEmoji": "🏯",
+    "bookingLinks": [
+      { "label": "高铁票", "url": "https://www.12306.cn/", "icon": "🚄" },
+      { "label": "故宫门票", "url": "https://gugong.museum.com/", "icon": "🎫" }
+    ],
+    "checklist": [],
+    "assignments": [],
+    "notes": "让孩子了解中国历史文化，游览故宫、长城、颐和园。",
+    "wishes": [
+      { "id": "w1", "memberId": "m3", "content": "我想爬长城！", "status": "pending" }
+    ]
+  }
+]
