@@ -1,0 +1,112 @@
+[
+  {
+    "id": "task1",
+    "title": "整理玩具房间",
+    "emoji": "🧸",
+    "category": "清洁",
+    "repeatType": "daily",
+    "assignedTo": ["m3", "m4"],
+    "points": 10,
+    "completed": false,
+    "dueTime": "晚上8:00前"
+  },
+  {
+    "id": "task2",
+    "title": "倒垃圾",
+    "emoji": "🗑️",
+    "category": "家务",
+    "repeatType": "daily",
+    "assignedTo": ["m3"],
+    "points": 5,
+    "completed": true,
+    "dueTime": "晚上9:00前"
+  },
+  {
+    "id": "task3",
+    "title": "拖客厅地板",
+    "emoji": "🧹",
+    "category": "清洁",
+    "repeatType": "weekly",
+    "assignedTo": ["m1", "m2"],
+    "points": 15,
+    "completed": false,
+    "dueTime": "周末前"
+  },
+  {
+    "id": "task4",
+    "title": "洗碗",
+    "emoji": "🍽️",
+    "category": "厨房",
+    "repeatType": "daily",
+    "assignedTo": ["m2"],
+    "points": 8,
+    "completed": true,
+    "dueTime": "饭后"
+  },
+  {
+    "id": "task5",
+    "title": "整理书包和作业",
+    "emoji": "🎒",
+    "category": "学习",
+    "repeatType": "daily",
+    "assignedTo": ["m3", "m4"],
+    "points": 8,
+    "completed": false,
+    "dueTime": "晚上9:00前"
+  },
+  {
+    "id": "task6",
+    "title": "浇花",
+    "emoji": "🌱",
+    "category": "家务",
+    "repeatType": "weekly",
+    "assignedTo": ["m4"],
+    "points": 10,
+    "completed": false,
+    "dueTime": "周三前"
+  },
+  {
+    "id": "task7",
+    "title": "擦窗户",
+    "emoji": "🪟",
+    "category": "清洁",
+    "repeatType": "monthly",
+    "assignedTo": ["m1", "m2"],
+    "points": 20,
+    "completed": false,
+    "dueTime": "本月底前"
+  },
+  {
+    "id": "task8",
+    "title": "整理冰箱",
+    "emoji": "🧊",
+    "category": "厨房",
+    "repeatType": "monthly",
+    "assignedTo": ["m2"],
+    "points": 15,
+    "completed": false,
+    "dueTime": "本月底前"
+  },
+  {
+    "id": "task9",
+    "title": "练习钢琴30分钟",
+    "emoji": "🎹",
+    "category": "学习",
+    "repeatType": "daily",
+    "assignedTo": ["m4"],
+    "points": 15,
+    "completed": true,
+    "dueTime": "每天"
+  },
+  {
+    "id": "task10",
+    "title": "读书20分钟",
+    "emoji": "📚",
+    "category": "学习",
+    "repeatType": "daily",
+    "assignedTo": ["m3", "m4"],
+    "points": 10,
+    "completed": false,
+    "dueTime": "睡前"
+  }
+]
