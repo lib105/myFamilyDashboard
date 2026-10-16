@@ -21,7 +21,7 @@ const WELCOME = {
   text: '你好！我是家庭助手 🏡\n告诉我家人的健康情况，我会结合当季食材推荐吃什么、怎么做；还可以管理旅行计划、健康提醒和家庭任务，比价、下单和查快递也没问题。',
 };
 
-export default function ChatPanel({ draft, setDraft, onViews }) {
+export default function ChatPanel({ draft, setDraft, onResult, onFocusAnswer, inputRef }) {
   const graph = useGraph();
   const [messages, setMessages] = useState(() => {
     const saved = loadMessages();
@@ -43,17 +43,24 @@ export default function ChatPanel({ draft, setDraft, onViews }) {
     const content = text.trim();
     if (!content || busy) return;
     setDraft('');
-    const history = messages.filter(m => !m.welcome);
+    const history = messages.filter(m => !m.welcome).map(m => ({ role: m.role, text: m.fullText || m.text }));
     setMessages(prev => [...prev, { role: 'user', text: content }]);
     setBusy(true);
     try {
       const result = await handleUserMessage(content, { graph, history });
-      setMessages(prev => [...prev, { role: 'assistant', text: result.reply, trace: result.trace, mode: result.mode }]);
-      if (result.views.length) onViews(result.views);
+      if (result.unanswered) {
+        setMessages(prev => [...prev, { role: 'assistant', text: '😅 这个问题我暂时无法回答，已在页面中间给出提示。', fullText: result.reply, unanswered: true }]);
+        onResult(content, result);
+      } else {
+        const answer = onResult(content, result);
+        setMessages(prev => [...prev, { role: 'assistant', text: result.reply, trace: result.trace, mode: result.mode, answer }]);
+      }
     } catch (e) {
-      setMessages(prev => [...prev, { role: 'assistant', text: `出错了：${e.message}` }]);
+      setMessages(prev => [...prev, { role: 'assistant', text: `😅 出错了：${e.message}`, unanswered: true }]);
+      onResult(content, { reply: '', views: [], trace: [], mode: 'local', unanswered: { reason: `出错了：${e.message}` } });
     } finally {
       setBusy(false);
+      inputRef?.current?.focus();
     }
   };
 
@@ -72,8 +79,13 @@ export default function ChatPanel({ draft, setDraft, onViews }) {
       <div className="chat-messages" ref={listRef}>
         {messages.map((m, i) => (
           <div key={i} className={`chat-row ${m.role}`}>
-            <div className={`chat-bubble ${m.role}`}>
-              {m.text}
+            <div className={`chat-bubble ${m.role}${m.answer ? ' summary' : ''}${m.unanswered ? ' unanswered' : ''}`}>
+              <div className={m.answer ? 'chat-clamp' : undefined}>{m.text}</div>
+              {m.answer && (
+                <button type="button" className="chat-focus" onClick={() => onFocusAnswer(m.answer)} title="在页面中间查看完整结果">
+                  👈 完整结果见页面中间
+                </button>
+              )}
               {m.trace?.length > 0 && (
                 <div className="chat-trace">
                   {m.trace.map((t, j) => (
@@ -90,7 +102,7 @@ export default function ChatPanel({ draft, setDraft, onViews }) {
         {busy && <div className="chat-row assistant"><div className="chat-bubble assistant">思考中… 🤔</div></div>}
       </div>
 
-      <div className="chip-row" style={{ margin: 'var(--spacing-sm) 0' }}>
+      <div className="suggestion-row" aria-label="快捷提问">
         {suggestions.map(s => (
           <button key={s} className="suggestion-chip" onClick={() => send(s)} disabled={busy}>{s}</button>
         ))}
@@ -98,6 +110,7 @@ export default function ChatPanel({ draft, setDraft, onViews }) {
 
       <form className="chat-input" onSubmit={e => { e.preventDefault(); send(draft); }}>
         <textarea
+          ref={inputRef}
           className="form-control"
           rows={2}
           value={draft}

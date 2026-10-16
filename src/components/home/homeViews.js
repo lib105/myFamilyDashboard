@@ -47,3 +47,23 @@ export function mergeViews(current, stamped) {
   const keys = new Set(stamped.map(viewKey));
   return [...stamped, ...current.filter(v => !keys.has(viewKey(v)))].slice(0, MAX_VIEWS);
 }
+
+const ANSWER_KEY = 'family-dashboard.current-answer.v1';
+
+/** The latest Q&A shown in the centre of the home page: { question, reply, trace, mode, viewIds, at }. */
+export function loadAnswer() {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(ANSWER_KEY) || 'null');
+    return v && typeof v === 'object' && !Array.isArray(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+export function saveAnswer(answer) {
+  try {
+    if (answer) window.localStorage.setItem(ANSWER_KEY, JSON.stringify(answer));
+    else window.localStorage.removeItem(ANSWER_KEY);
+  } catch {
+    /* ignore */
+  }
+}

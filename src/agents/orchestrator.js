@@ -101,6 +101,7 @@ export async function handleUserMessage(text, { graph, history = [] }) {
   }
 
   const replies = [];
+  const failures = [];
   const autoReplies = [];
   const views = [];
   const trace = [];
@@ -114,11 +115,18 @@ export async function handleUserMessage(text, { graph, history = [] }) {
       if (result.reply) (call.auto ? autoReplies : replies).push(result.reply);
       views.push(...result.views);
     } catch (e) {
+      failures.push(`「${capability.label}」执行失败：${e.message}`);
       replies.push(`❌ 「${capability.label}」执行失败：${e.message}`);
     }
   }
 
   if (!replies.length) replies.push(...autoReplies);
   const reply = [note, llmContent, ...replies].filter(Boolean).join('\n\n') || (calls.length ? '已处理～' : HELP);
-  return { reply, views, trace, mode };
+  // Nothing understood the question (no tool, no LLM answer) or every tool failed.
+  const unanswered = !llmContent && !views.length
+    && (!trace.length || (failures.length > 0 && failures.length === trace.length));
+  return {
+    reply, views, trace, mode,
+    unanswered: unanswered ? { reason: failures.length ? failures.join('；') : '没有找到能处理这个问题的 Agent 能力', note } : null,
+  };
 }
