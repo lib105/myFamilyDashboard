@@ -47,6 +47,18 @@ export function getFamilyProfiles(graph) {
   return getMembers(graph).map(m => getMemberProfile(graph, m));
 }
 
+/** Human-readable family summary, used in LLM prompts. */
+export function describeFamily(graph) {
+  return getFamilyProfiles(graph).map(p => {
+    const parts = [];
+    if (p.member.age) parts.push(`${p.member.age}岁`);
+    if (p.conditions.length) parts.push(`健康状况：${p.conditions.map(c => c.label).join('、')}`);
+    if (p.allergens.length) parts.push(`过敏：${p.allergens.map(a => a.label).join('、')}`);
+    p.attributes.forEach(a => parts.push(`${a.key}：${a.value}`));
+    return `${p.member.name}（${parts.join('；') || '暂无档案'}）`;
+  }).join('\n');
+}
+
 export function upsertMember(graph, name) {
   const existing = findMember(graph, name);
   if (existing) return { member: existing, created: false };

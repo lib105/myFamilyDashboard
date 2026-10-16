@@ -6,6 +6,9 @@ const MAX_MESSAGES = 60;
 export const DEFAULT_VIEWS = [
   { id: 'default-produce', type: 'produce', title: '当季推荐食材', args: { category: 'all' }, capabilityId: 'recommend_produce' },
   { id: 'default-recipes', type: 'recipes', title: '简单食谱推荐', args: {}, capabilityId: 'recommend_recipes' },
+  { id: 'default-tasks', type: 'tasks', title: '家庭任务', args: {}, capabilityId: 'list_tasks' },
+  { id: 'default-reminders', type: 'reminders', title: '健康提醒', args: {}, capabilityId: 'health_reminders' },
+  { id: 'default-trips', type: 'trips', title: '家庭旅行计划', args: {}, capabilityId: 'list_trips' },
 ];
 
 const read = (key, fallback) => {
@@ -33,7 +36,7 @@ const viewKey = (v) => [
   v.type,
   v.type === 'text' ? v.capabilityId : '',
   v.type === 'order' ? v.args?.orderId : '',
-  ['produce', 'recipes'].includes(v.type) ? JSON.stringify(v.args || {}) : '',
+  ['produce', 'recipes', 'trips', 'health'].includes(v.type) ? JSON.stringify(v.args || {}) : '',
 ].join(':');
 
 let seq = 0;

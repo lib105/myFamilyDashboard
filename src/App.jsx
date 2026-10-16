@@ -1,16 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AppLayout from './components/layout/AppLayout.jsx';
-import Dashboard from './components/dashboard/Dashboard.jsx';
-import FoodHome from './components/home/FoodHome.jsx';
+import FamilyHome from './components/home/FamilyHome.jsx';
 import AgentCenter from './components/agents/AgentCenter.jsx';
 import AISettings from './components/settings/AISettings.jsx';
-import TripList from './components/trips/TripList.jsx';
-import TripDetail from './components/trips/TripDetail.jsx';
-import TripWishes from './components/trips/TripWishes.jsx';
-import TaskList from './components/tasks/TaskList.jsx';
-import ShoppingList from './components/shopping/ShoppingList.jsx';
-import DealsFeed from './components/deals/DealsFeed.jsx';
-import AgencyUploadPage from './components/deals/AgencyUploadPage.jsx';
 import Login from './components/auth/Login.jsx';
 
 function App() {
@@ -19,17 +11,9 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route element={<AppLayout />}>
-          <Route path="/" element={<FoodHome />} />
+          <Route path="/" element={<FamilyHome />} />
           <Route path="/agents" element={<AgentCenter />} />
           <Route path="/settings" element={<AISettings />} />
-          <Route path="/overview" element={<Dashboard />} />
-          <Route path="/trips" element={<TripList />} />
-          <Route path="/trips/:id" element={<TripDetail />} />
-          <Route path="/trips/wishes" element={<TripWishes />} />
-          <Route path="/tasks" element={<TaskList />} />
-          <Route path="/shopping" element={<ShoppingList />} />
-          <Route path="/deals" element={<DealsFeed />} />
-          <Route path="/agency-upload" element={<AgencyUploadPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

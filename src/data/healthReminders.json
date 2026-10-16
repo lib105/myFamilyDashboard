@@ -1,0 +1,8 @@
+[
+  { "id": "r1", "memberId": "m1", "emoji": "💊", "category": "用药", "title": "早餐后服用降压药", "schedule": "每天 08:00", "done": false },
+  { "id": "r2", "memberId": "m1", "emoji": "🩺", "category": "监测", "title": "测量并记录血压", "schedule": "每天 早晚各一次", "done": false },
+  { "id": "r3", "memberId": "m2", "emoji": "🌸", "category": "预防", "title": "花粉季外出佩戴口罩", "schedule": "春秋换季", "done": false },
+  { "id": "r4", "memberId": "m3", "emoji": "💉", "category": "疫苗", "title": "接种流感疫苗", "schedule": "本月内", "done": false },
+  { "id": "r5", "memberId": "m4", "emoji": "🦷", "category": "体检", "title": "儿童口腔检查", "schedule": "每半年", "done": true },
+  { "id": "r6", "memberId": "", "emoji": "🏃", "category": "运动", "title": "全家晚饭后散步 30 分钟", "schedule": "每天 19:30", "done": false }
+]

@@ -1,26 +1,18 @@
 import {
   upsertMember, findMember, ensureCondition, ensureAllergen, resolveCondition, setMemberAttribute,
-  getFamilyProfiles, resolveIngredient, getIngredientFacts, getCapabilities, findCapabilityByName,
-  getAgents, newId,
+  resolveIngredient, getIngredientFacts, getCapabilities, findCapabilityByName,
+  getAgents, getCapabilityAgent, describeFamily, newId,
 } from '../ontology/queries.js';
 import { INGREDIENT_CATEGORIES } from '../ontology/schema.js';
 import { recommendIngredients, recommendRecipes, currentMonth } from './recommender.js';
 import { chatCompletion, isAIConfigured, parseJsonFromText } from './llmClient.js';
+import { getAgentConfig, buildAgentPrompt, createCustomCapability } from './agentConfig.js';
+import { FAMILY_HANDLERS } from './familyAgents.js';
+
+export { describeFamily };
 
 const asArray = (v) => (Array.isArray(v) ? v : v === undefined || v === null || v === '' ? [] : [v]);
 const asText = (v) => (typeof v === 'string' || typeof v === 'number' ? String(v).trim() : '');
-
-/** Human-readable family summary, used in LLM prompts. */
-export function describeFamily(graph) {
-  return getFamilyProfiles(graph).map(p => {
-    const parts = [];
-    if (p.member.age) parts.push(`${p.member.age}岁`);
-    if (p.conditions.length) parts.push(`健康状况：${p.conditions.map(c => c.label).join('、')}`);
-    if (p.allergens.length) parts.push(`过敏：${p.allergens.map(a => a.label).join('、')}`);
-    p.attributes.forEach(a => parts.push(`${a.key}：${a.value}`));
-    return `${p.member.name}（${parts.join('；') || '暂无档案'}）`;
-  }).join('\n');
-}
 
 function memberIdsFromArg(graph, member) {
   const m = asText(member) && findMember(graph, asText(member));
@@ -336,13 +328,7 @@ function manageCapabilities(args, { graph }) {
     const agentName = asText(args.agent);
     let agent = agentName ? getAgents(graph).find(a => a.label === agentName || a.label.includes(agentName)) : graph.getEntity('agent_custom');
     if (!agent) agent = graph.addEntity({ id: newId('agent'), type: 'Agent', label: agentName, emoji: '🤖', description: '通过对话创建的 Agent' });
-    const cap = graph.addEntity({
-      id: newId('custom'), type: 'Capability', label, keywords, kind: prompt ? 'llm' : 'mock', reply, prompt,
-      description: prompt ? `用户自定义 AI 能力：${prompt.slice(0, 60)}` : `用户自定义能力，返回：${reply.slice(0, 60)}`,
-      enabled: true, priority: 10, agentId: agent.id,
-      params: { type: 'object', properties: { input: { type: 'string', description: '用户原始问题' } } },
-    });
-    graph.addTriple(cap.id, 'providedBy', agent.id);
+    createCustomCapability(graph, { label, keywords, reply, prompt, agentId: agent.id });
     return { reply: `✅ 已为「${agent.label}」新增能力「${label}」，触发关键词：${keywords.join('、')}。现在就可以试试！`, views };
   }
   const cap = findCapabilityByName(graph, asText(args.name));
@@ -365,7 +351,9 @@ async function runCustomCapability(cap, args, { graph, text }) {
   if (cap.kind === 'llm') {
     if (!isAIConfigured()) return { reply: `能力「${cap.label}」需要调用 AI，请先在「AI 设置」中配置 API Key。`, views: [] };
     const prompt = cap.prompt.replaceAll('{input}', input).replaceAll('{family}', describeFamily(graph));
-    const msg = await chatCompletion({ messages: [{ role: 'system', content: `你是家庭助手的「${cap.label}」能力。` }, { role: 'user', content: prompt }] });
+    const agent = getCapabilityAgent(graph, cap);
+    const system = `${agent ? `${buildAgentPrompt(getAgentConfig(graph, agent))}\n\n` : ''}你现在执行家庭助手的「${cap.label}」能力。`;
+    const msg = await chatCompletion({ messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }] });
     const content = asText(msg.content) || '（AI 没有返回内容）';
     return { reply: content, views: [{ type: 'text', title: cap.label, data: { text: content } }] };
   }
@@ -383,13 +371,15 @@ const HANDLERS = {
   place_order: placeOrder,
   track_delivery: trackDelivery,
   manage_capabilities: manageCapabilities,
+  ...FAMILY_HANDLERS,
 };
 
 /** Executes a Capability entity with the given arguments. */
 export async function executeCapability(capability, args, ctx) {
   if (capability.enabled === false) return { reply: `能力「${capability.label}」已被禁用。`, views: [] };
   const handler = capability.kind === 'builtin' ? HANDLERS[capability.handler] : null;
-  const result = handler ? await handler(args || {}, ctx) : await runCustomCapability(capability, args || {}, ctx);
+  const context = { ...ctx, capability };
+  const result = handler ? await handler(args || {}, context) : await runCustomCapability(capability, args || {}, context);
   return {
     reply: result.reply,
     views: (result.views || []).map(v => ({ ...v, capabilityId: capability.id })),

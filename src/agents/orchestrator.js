@@ -1,16 +1,21 @@
 import { routeLocally } from './router.js';
 import { executeCapability, describeFamily } from './capabilities.js';
 import { chatCompletion, isAIConfigured, loadAISettings } from './llmClient.js';
-import { getCapabilities, getCapabilityAgent } from '../ontology/queries.js';
+import { getAgents, getCapabilities, getCapabilityAgent } from '../ontology/queries.js';
+import { getAgentConfig } from './agentConfig.js';
 import { CLASSES, RELATIONS, seasonOfMonth } from '../ontology/schema.js';
 import { currentMonth } from './recommender.js';
 
-const HELP = `我是家庭饮食助手，可以这样和我说：
+const HELP = `我是家庭助手，可以这样和我说：
 • “爸爸有高血压，妈妈有过敏性鼻炎，小明10岁免疫力低下” —— 记录健康档案（属性不限）
 • “推荐点当季水果” / “今晚做什么菜” —— 推荐食材与食谱
-• “西兰花哪家超市便宜” / “最近有什么打折的蔬菜” —— 比价与优惠
-• “帮我买2斤猕猴桃” / “我的快递到哪了” —— 模拟下单与物流
+• “我们有哪些旅行计划” / “大阪行前清单还差什么” —— 旅行 Agent
+• “全家健康状况怎么样” / “提醒爸爸每晚9点测血压” —— 健康 Agent
+• “今天有哪些家庭任务” / “添加任务 给小明 整理书桌 10积分” / “倒垃圾完成了” —— 任务 Agent
+• “西兰花哪家超市便宜” / “帮我买2斤猕猴桃” / “我的快递到哪了” —— 比价、模拟下单与物流
 • “你能做什么” / “添加能力 名称:xxx 关键词:a,b 回复:xxx” —— 管理和扩展能力`;
+
+const oneLine = (s, n) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, n);
 
 function toolsFromCapabilities(graph) {
   return getCapabilities(graph, { enabledOnly: true }).map(c => {
@@ -29,12 +34,17 @@ function toolsFromCapabilities(graph) {
 function systemPrompt(graph) {
   const month = currentMonth();
   return [
-    '你是“家庭饮食助手”的意图路由器，负责理解用户意图并调用合适的工具（Agent 能力）来动态更新首页。',
+    '你是“家庭助手”的意图路由器，负责理解用户意图并调用合适的工具（Agent 能力）来动态更新首页。',
     `今天是 ${new Date().toLocaleDateString('zh-CN')}，${month}月，${seasonOfMonth(month).label}。`,
     `本体类：${Object.entries(CLASSES).map(([k, v]) => `${k}(${v.label})`).join('、')}。`,
     `本体关系：${Object.entries(RELATIONS).map(([k, v]) => `${v.domain}-${k}->${v.range}`).join('、')}。`,
     `家庭成员档案：\n${describeFamily(graph) || '（暂无）'}`,
+    `Agent（工具名前的方括号为所属 Agent）：\n${getAgents(graph).map(a => {
+      const c = getAgentConfig(graph, a);
+      return `- ${c.emoji} ${c.label}：${oneLine(c.description, 80)}｜指令摘要：${oneLine(c.agentMd, 160)}`;
+    }).join('\n')}`,
     '规则：用户描述家人健康状况/属性时调用 update_member_profile（属性不限，未知属性放进 attributes）；可同时调用多个工具；',
+    '旅行、健康、任务相关的开放式问题优先调用对应 Agent 的咨询工具（它会使用该 Agent 的 Agent.md / Skill.md / Context.md 与知识库）；',
     '不需要工具时直接简短回答。健康相关建议仅供参考，不替代医生意见。回答使用中文。',
   ].join('\n');
 }
