@@ -1,6 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AppLayout from './components/layout/AppLayout.jsx';
 import Dashboard from './components/dashboard/Dashboard.jsx';
+import FoodHome from './components/home/FoodHome.jsx';
+import AgentCenter from './components/agents/AgentCenter.jsx';
+import AISettings from './components/settings/AISettings.jsx';
 import TripList from './components/trips/TripList.jsx';
 import TripDetail from './components/trips/TripDetail.jsx';
 import TripWishes from './components/trips/TripWishes.jsx';
@@ -16,7 +19,10 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route element={<AppLayout />}>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/" element={<FoodHome />} />
+          <Route path="/agents" element={<AgentCenter />} />
+          <Route path="/settings" element={<AISettings />} />
+          <Route path="/overview" element={<Dashboard />} />
           <Route path="/trips" element={<TripList />} />
           <Route path="/trips/:id" element={<TripDetail />} />
           <Route path="/trips/wishes" element={<TripWishes />} />

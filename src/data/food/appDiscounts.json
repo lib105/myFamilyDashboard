@@ -1,0 +1,10 @@
+[
+  { "id": "d1", "app": "生鲜到家App", "emoji": "📱", "title": "秋季水果节：猕猴桃第二件半价", "ingredientIds": ["kiwi"], "discount": "第二件5折", "validUntil": "本周日" },
+  { "id": "d2", "app": "社区团购", "emoji": "👥", "title": "团购价：大白菜+白萝卜组合 9.9元/10斤", "ingredientIds": ["chinese_cabbage", "white_radish"], "discount": "团购价 ¥9.9", "validUntil": "明晚20:00截团" },
+  { "id": "d3", "app": "外卖平台超市", "emoji": "🛵", "title": "西兰花、胡萝卜满39减10", "ingredientIds": ["broccoli", "carrot"], "discount": "满39减10", "validUntil": "今天" },
+  { "id": "d4", "app": "会员仓储店App", "emoji": "🏭", "title": "会员日：三文鱼、鸡胸肉 85折", "ingredientIds": ["salmon", "chicken_breast"], "discount": "85折", "validUntil": "周三" },
+  { "id": "d5", "app": "生鲜到家App", "emoji": "📱", "title": "新米新粮：小米、燕麦买二送一", "ingredientIds": ["millet", "oats"], "discount": "买二送一", "validUntil": "月底" },
+  { "id": "d6", "app": "社区团购", "emoji": "👥", "title": "当季雪梨 3.5元/斤", "ingredientIds": ["pear"], "discount": "特价 ¥3.5/斤", "validUntil": "后天" },
+  { "id": "d7", "app": "外卖平台超市", "emoji": "🛵", "title": "柚子第二个1元", "ingredientIds": ["pomelo"], "discount": "第二个¥1", "validUntil": "本周" },
+  { "id": "d8", "app": "城市超市App", "emoji": "🏬", "title": "鸡蛋、牛奶早餐组合立减5元", "ingredientIds": ["egg", "milk"], "discount": "立减¥5", "validUntil": "今天" }
+]

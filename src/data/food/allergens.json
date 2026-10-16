@@ -1,0 +1,12 @@
+[
+  { "id": "peanut", "label": "花生", "synonyms": ["花生"] },
+  { "id": "tree_nut", "label": "坚果", "synonyms": ["坚果", "核桃", "杏仁", "腰果"] },
+  { "id": "shellfish", "label": "虾蟹贝类", "synonyms": ["海鲜", "虾", "蟹", "贝类", "虾蟹"] },
+  { "id": "fish", "label": "鱼类", "synonyms": ["鱼"] },
+  { "id": "milk", "label": "牛奶/乳制品", "synonyms": ["牛奶", "乳制品", "乳糖", "奶"] },
+  { "id": "egg", "label": "鸡蛋", "synonyms": ["鸡蛋", "蛋"] },
+  { "id": "soy", "label": "大豆", "synonyms": ["大豆", "黄豆", "豆制品"] },
+  { "id": "wheat", "label": "小麦/麸质", "synonyms": ["小麦", "麸质", "面粉"] },
+  { "id": "mango", "label": "芒果", "synonyms": ["芒果"] },
+  { "id": "pollen", "label": "花粉", "synonyms": ["花粉"] }
+]

@@ -1,0 +1,102 @@
+{
+  "agents": [
+    { "id": "agent_profile", "label": "健康档案 Agent", "emoji": "🩺", "description": "通过对话采集、维护家庭成员健康档案（属性不限）" },
+    { "id": "agent_nutrition", "label": "营养推荐 Agent", "emoji": "🥗", "description": "结合季节与成员健康状况，推荐食材与简单食谱" },
+    { "id": "agent_ingredient", "label": "食材数据 Agent", "emoji": "📚", "description": "采集、查询食材营养与时令数据" },
+    { "id": "agent_shopping", "label": "采购 Agent", "emoji": "🛒", "description": "超市比价、汇总其他 App 打折信息、模拟下单" },
+    { "id": "agent_logistics", "label": "物流 Agent", "emoji": "🚚", "description": "查询订单与快递物流状态" },
+    { "id": "agent_system", "label": "系统 Agent", "emoji": "🧠", "description": "通过对话管理 Agent 能力（新增/启用/禁用/删除）" },
+    { "id": "agent_custom", "label": "自定义 Agent", "emoji": "🧩", "description": "承载用户通过对话新增的能力" }
+  ],
+  "capabilities": [
+    {
+      "id": "update_member_profile", "label": "记录家庭成员档案", "agentId": "agent_profile", "handler": "update_member_profile", "priority": 100,
+      "description": "新增或更新家庭成员档案：年龄、疾病/健康状况（如高血压、糖尿病、过敏性鼻炎、免疫力低下）、过敏原以及任意其他属性。",
+      "keywords": ["档案", "岁", "过敏", "患有", "血压", "血糖", "身高", "体重", "成员", "家人"],
+      "examples": ["爸爸有高血压，妈妈有过敏性鼻炎", "奶奶72岁，血糖偏高，对花生过敏"],
+      "params": { "type": "object", "properties": { "updates": { "type": "array", "items": { "type": "object", "properties": {
+        "member": { "type": "string", "description": "成员称呼，如 爸爸/妈妈/奶奶/小明" },
+        "age": { "type": "number" },
+        "conditions": { "type": "array", "items": { "type": "string" }, "description": "健康状况/疾病" },
+        "allergies": { "type": "array", "items": { "type": "string" }, "description": "过敏原" },
+        "attributes": { "type": "array", "items": { "type": "object", "properties": { "key": { "type": "string" }, "value": { "type": "string" } }, "required": ["key", "value"] }, "description": "其他任意属性" }
+      }, "required": ["member"] } } }, "required": ["updates"] }
+    },
+    {
+      "id": "view_family_profile", "label": "查看家庭档案", "agentId": "agent_profile", "handler": "view_family_profile", "priority": 50,
+      "description": "展示全部家庭成员的健康档案。",
+      "keywords": ["查看档案", "家庭档案", "健康档案", "家人情况", "成员信息"],
+      "examples": ["看看家庭健康档案"],
+      "params": { "type": "object", "properties": {} }
+    },
+    {
+      "id": "recommend_produce", "label": "推荐当季食材/水果/蔬菜", "agentId": "agent_nutrition", "handler": "recommend_produce", "priority": 40,
+      "description": "根据当前季节和家庭成员健康状况推荐食材、水果或蔬菜，当季优先，并过滤过敏原。",
+      "keywords": ["推荐", "吃什么", "当季", "时令", "水果", "蔬菜", "食材", "应季"],
+      "examples": ["推荐点适合爸爸的水果", "这个季节吃什么蔬菜好"],
+      "params": { "type": "object", "properties": {
+        "category": { "type": "string", "enum": ["all", "fruit", "vegetable", "protein", "grain", "mushroom", "nut"] },
+        "member": { "type": "string", "description": "只针对某个成员推荐，可选" }
+      } }
+    },
+    {
+      "id": "recommend_recipes", "label": "推荐简单食谱", "agentId": "agent_nutrition", "handler": "recommend_recipes", "priority": 30,
+      "description": "基于推荐食材生成适合全家的简单食谱。",
+      "keywords": ["食谱", "菜谱", "做什么菜", "怎么做", "晚饭", "午饭", "早餐", "早饭", "做饭", "做菜"],
+      "examples": ["今晚做什么菜", "给孩子推荐个早餐"],
+      "params": { "type": "object", "properties": {
+        "mealType": { "type": "string", "description": "早餐/午餐/晚餐/加餐，可选" },
+        "member": { "type": "string" }
+      } }
+    },
+    {
+      "id": "collect_ingredient_data", "label": "采集食材数据", "agentId": "agent_ingredient", "handler": "collect_ingredient_data", "priority": 20,
+      "description": "查询/采集某种食材的营养成分、时令月份、适宜和慎食人群。",
+      "keywords": ["营养", "成分", "介绍", "适合谁", "什么季节", "食材数据", "采集"],
+      "examples": ["介绍一下猕猴桃的营养", "山药适合谁吃"],
+      "params": { "type": "object", "properties": { "items": { "type": "array", "items": { "type": "string" } } }, "required": ["items"] }
+    },
+    {
+      "id": "query_supermarket_price", "label": "超市价格比价", "agentId": "agent_shopping", "handler": "query_supermarket_price", "priority": 20,
+      "description": "查询多个超市的食材价格并比价。",
+      "keywords": ["价格", "多少钱", "比价", "超市", "便宜", "价钱"],
+      "examples": ["西兰花和苹果哪家超市便宜"],
+      "params": { "type": "object", "properties": { "items": { "type": "array", "items": { "type": "string" } } } }
+    },
+    {
+      "id": "query_app_discounts", "label": "其他 App 打折信息", "agentId": "agent_shopping", "handler": "query_app_discounts", "priority": 20,
+      "description": "汇总生鲜 App、社区团购、外卖平台等的打折优惠信息。",
+      "keywords": ["打折", "优惠", "折扣", "促销", "满减", "团购", "券", "特价"],
+      "examples": ["最近有什么打折的蔬菜"],
+      "params": { "type": "object", "properties": { "items": { "type": "array", "items": { "type": "string" } } } }
+    },
+    {
+      "id": "place_order", "label": "下单购买（模拟）", "agentId": "agent_shopping", "handler": "place_order", "priority": 15,
+      "description": "把食材加入订单并生成待确认的模拟订单，默认选择最便宜的超市。",
+      "keywords": ["下单", "帮我买", "购买", "订购", "买一些", "买点", "加入订单"],
+      "examples": ["帮我买2斤猕猴桃和一盒豆腐"],
+      "params": { "type": "object", "properties": { "items": { "type": "array", "items": { "type": "object", "properties": { "name": { "type": "string" }, "quantity": { "type": "number" } }, "required": ["name"] } } } }
+    },
+    {
+      "id": "track_delivery", "label": "物流快递查询", "agentId": "agent_logistics", "handler": "track_delivery", "priority": 15,
+      "description": "查询订单配送和快递物流信息。",
+      "keywords": ["快递", "物流", "到哪了", "配送", "订单状态", "送到", "包裹"],
+      "examples": ["我的快递到哪了"],
+      "params": { "type": "object", "properties": {} }
+    },
+    {
+      "id": "manage_capabilities", "label": "管理 Agent 能力", "agentId": "agent_system", "handler": "manage_capabilities", "priority": 90,
+      "description": "列出、新增、启用、禁用或删除 Agent 能力。新增格式：添加能力 名称:xxx 关键词:a,b 回复:xxx（或 提示词:xxx，需配置 AI Key）。",
+      "keywords": ["能力", "你能做什么", "功能列表", "添加能力", "新增能力", "禁用能力", "启用能力", "删除能力"],
+      "examples": ["你能做什么", "添加能力 名称:社区团购查询 关键词:团购,拼团 回复:今晚8点社区团购截单"],
+      "params": { "type": "object", "properties": {
+        "action": { "type": "string", "enum": ["list", "add", "enable", "disable", "remove"] },
+        "name": { "type": "string" },
+        "keywords": { "type": "array", "items": { "type": "string" } },
+        "reply": { "type": "string", "description": "固定回复（模拟数据型能力）" },
+        "prompt": { "type": "string", "description": "提示词模板（LLM 型能力），可用 {input} 和 {family}" },
+        "agent": { "type": "string" }
+      }, "required": ["action"] }
+    }
+  ]
+}
