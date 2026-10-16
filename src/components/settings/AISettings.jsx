@@ -85,6 +85,10 @@ export default function AISettings() {
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowKey(s => !s)}>{showKey ? '隐藏' : '显示'}</button>
               </div>
             </div>
+            <label className="switch mb-sm">
+              <input type="checkbox" checked={form.rememberKey} onChange={e => update({ rememberKey: e.target.checked })} />
+              <span>在本设备上记住 Key（默认仅保存到关闭浏览器为止）</span>
+            </label>
             <label className="switch mb-md">
               <input type="checkbox" checked={form.enabled} onChange={e => update({ enabled: e.target.checked })} />
               <span>启用 AI 模式（关闭则使用本地规则路由）</span>
@@ -107,8 +111,8 @@ export default function AISettings() {
               </ul>
             </div>
             <div className="alert alert-warning" style={{ display: 'block' }}>
-              🔒 <b>安全提示</b>：Key 仅保存在本浏览器的 localStorage，并由浏览器直接请求你填写的接口（仅允许 https）。
-              请勿在公共电脑上保存 Key；正式上线建议通过后端代理转发，避免在前端暴露 Key。
+              🔒 <b>安全提示</b>：Key 默认只保存在当前浏览器会话（sessionStorage），关闭浏览器即清除；勾选“记住 Key”后才会存入 localStorage（明文）。
+              浏览器会直接请求你填写的接口（仅允许 https）。请勿在公共电脑上记住 Key；正式上线建议通过后端代理转发，避免在前端暴露 Key。
             </div>
             <div className="card">
               <div className="card-header"><span className="card-title">🗂️ 数据管理</span></div>

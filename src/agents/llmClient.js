@@ -1,9 +1,12 @@
 /**
  * Minimal OpenAI-compatible Chat Completions client. The user configures the
- * endpoint, model and API key; settings stay in this browser's localStorage.
+ * endpoint and model (kept in localStorage). The API key is kept only in
+ * sessionStorage (cleared when the browser closes) unless the user explicitly
+ * opts in to remembering it on this device.
  */
 
 const SETTINGS_KEY = 'family-dashboard.ai-settings.v1';
+const KEY_STORAGE_KEY = 'family-dashboard.ai-key.v1';
 
 export const PROVIDER_PRESETS = [
   { id: 'openai', label: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
@@ -13,22 +16,44 @@ export const PROVIDER_PRESETS = [
   { id: 'custom', label: '自定义（OpenAI 兼容）', baseUrl: '', model: '' },
 ];
 
-export const DEFAULT_SETTINGS = { provider: 'openai', baseUrl: PROVIDER_PRESETS[0].baseUrl, model: PROVIDER_PRESETS[0].model, apiKey: '', enabled: true };
+export const DEFAULT_SETTINGS = {
+  provider: 'openai', baseUrl: PROVIDER_PRESETS[0].baseUrl, model: PROVIDER_PRESETS[0].model,
+  apiKey: '', enabled: true, rememberKey: false,
+};
 
-export function loadAISettings() {
+function readKey() {
   try {
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(window.localStorage.getItem(SETTINGS_KEY) || '{}') };
+    return window.sessionStorage.getItem(KEY_STORAGE_KEY) || window.localStorage.getItem(KEY_STORAGE_KEY) || '';
   } catch {
-    return { ...DEFAULT_SETTINGS };
+    return '';
   }
 }
 
+export function loadAISettings() {
+  let saved = {};
+  try {
+    saved = JSON.parse(window.localStorage.getItem(SETTINGS_KEY) || '{}');
+  } catch {
+    /* ignore */
+  }
+  delete saved.apiKey;
+  return { ...DEFAULT_SETTINGS, ...saved, apiKey: readKey() };
+}
+
 export function saveAISettings(settings) {
-  window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  const { apiKey, ...rest } = settings;
+  window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(rest));
+  window.sessionStorage.removeItem(KEY_STORAGE_KEY);
+  window.localStorage.removeItem(KEY_STORAGE_KEY);
+  if (!apiKey) return;
+  // The key is only persisted beyond this browser session on explicit opt-in.
+  (settings.rememberKey ? window.localStorage : window.sessionStorage).setItem(KEY_STORAGE_KEY, apiKey);
 }
 
 export function clearAISettings() {
   window.localStorage.removeItem(SETTINGS_KEY);
+  window.localStorage.removeItem(KEY_STORAGE_KEY);
+  window.sessionStorage.removeItem(KEY_STORAGE_KEY);
 }
 
 /** Only HTTPS endpoints (or plain HTTP on localhost) are accepted. */

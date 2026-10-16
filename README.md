@@ -11,7 +11,7 @@ dynamically invokes Agent capabilities to update the home page. Travel, tasks, s
   未知的健康状况/过敏原会作为新概念自动扩展进本体。
 - **AI Key 可配置**（`/settings`）：支持 OpenAI 兼容接口（OpenAI、DeepSeek、通义千问、Kimi 或自定义）。
   未配置时使用本地规则路由；配置后由大模型通过 function calling 选择能力，失败自动回退本地模式。
-  Key 只保存在浏览器 localStorage，仅允许 https（本机调试可用 http://localhost）；正式上线建议走后端代理。
+  Key 默认只保存在 sessionStorage（关闭浏览器即清除），用户勾选“记住 Key”才会写入 localStorage；仅允许 https（本机调试可用 http://localhost）；正式上线建议走后端代理。
 - **Agent 能力可扩展**（`/agents`）：内置健康档案、营养推荐、食材数据采集、超市比价、其他 App 打折、模拟下单、物流查询等能力；
   可在对话中管理能力，例如：
   - `你能做什么`
