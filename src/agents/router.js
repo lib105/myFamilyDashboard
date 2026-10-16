@@ -1,5 +1,6 @@
 import { extractProfileUpdates } from './profileExtractor.js';
 import { getCapabilities, getMembers, findIngredientsInText } from '../ontology/queries.js';
+import { findTrip } from './familyAgents.js';
 
 const CATEGORY_WORDS = [
   ['fruit', /水果|果子/], ['vegetable', /蔬菜|青菜|菜蔬/], ['protein', /肉|蛋白|蛋奶|豆制品/],
@@ -164,5 +165,9 @@ export function routeLocally(text, graph) {
     .sort((a, b) => b.score - a.score || (b.c.priority || 0) - (a.c.priority || 0))
     .slice(0, 2);
   scored.forEach(({ c }) => calls.push({ capabilityId: c.id, args: extractArgs(c, text, graph) }));
+  // Open-ended questions about a known trip go to the travel agent.
+  if (!calls.length && findTrip(graph, text) && isEnabled(graph, 'travel_consult')) {
+    calls.push({ capabilityId: 'travel_consult', args: { input: text } });
+  }
   return calls;
 }

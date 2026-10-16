@@ -214,8 +214,7 @@ export function searchKnowledge(config, query, limit = 3) {
       if (score > 0) hits.push({ source: src.name, text, score });
     });
   });
-  const min = terms.size >= 3 ? 2 : 1;
-  return hits.filter(h => h.score >= min).sort((a, b) => b.score - a.score).slice(0, limit);
+  return hits.sort((a, b) => b.score - a.score).slice(0, limit);
 }
 
 /**
