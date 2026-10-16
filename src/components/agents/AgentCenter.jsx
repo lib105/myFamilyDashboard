@@ -2,14 +2,36 @@ import { useState } from 'react';
 import { useGraph } from '../../ontology/index.js';
 import { CLASSES, RELATIONS } from '../../ontology/schema.js';
 import { getAgents, getCapabilities } from '../../ontology/queries.js';
+import { getAgentConfig } from '../../agents/agentConfig.js';
+import AgentConfigEditor from './AgentConfigEditor.jsx';
 
 const KIND_LABEL = { builtin: ['内置', 'badge-secondary'], mock: ['模拟数据', 'badge-warning'], llm: ['AI 提示词', 'badge-purple'] };
 
-function AgentsTab() {
+function ConfigChips({ config, toolCount }) {
+  const urls = config.knowledge.filter(k => k.kind === 'url').length;
+  const files = config.knowledge.length - urls;
+  return (
+    <div className="config-chips">
+      <span className={`mini-chip ${config.agentMd.trim() ? 'good' : ''}`}>📝 Agent.md</span>
+      <span className={`mini-chip ${config.skillMd.trim() ? 'good' : ''}`}>🎯 Skill.md</span>
+      <span className={`mini-chip ${config.contextMd.trim() ? 'good' : ''}`}>🗂️ Context.md</span>
+      <span className="mini-chip">🔧 工具 {toolCount}</span>
+      <span className="mini-chip">📄 文件 {files}</span>
+      <span className="mini-chip">🌐 网址 {urls}</span>
+      {config.starters.length > 0 && <span className="mini-chip">💡 开场提示 {config.starters.length}</span>}
+    </div>
+  );
+}
+
+function AgentsTab({ onConfigure }) {
   const graph = useGraph();
   const caps = getCapabilities(graph);
   return (
     <>
+      <div className="flex items-center justify-between mb-sm" style={{ flexWrap: 'wrap', gap: 8 }}>
+        <span className="text-sm text-muted">点击「⚙️ 配置」可编辑 Agent.md / Skill.md / Context.md、工具、知识（文件与网址）和开场提示。</span>
+        <button className="btn btn-primary btn-sm" onClick={() => onConfigure(null)}>＋ 新建 Agent</button>
+      </div>
       <div className="alert alert-info" style={{ display: 'block' }}>
         💡 能力可以直接在首页对话中扩展，例如：
         <code>添加能力 名称:社区团购查询 关键词:团购,拼团 回复:今晚8点截单</code>；
@@ -23,9 +45,13 @@ function AgentsTab() {
             <div key={agent.id} className="card">
               <div className="card-header">
                 <span className="card-title">{agent.emoji} {agent.label}</span>
-                {agent.layer === 'user' && <span className="badge badge-purple">对话创建</span>}
+                <div className="agent-card-actions">
+                  {agent.layer === 'user' && <span className="badge badge-purple">用户创建</span>}
+                  <button className="btn btn-outline btn-sm" onClick={() => onConfigure(agent.id)}>⚙️ 配置</button>
+                </div>
               </div>
-              <p className="text-sm text-muted mb-md">{agent.description}</p>
+              <p className="text-sm text-muted mb-sm">{agent.description}</p>
+              <ConfigChips config={getAgentConfig(graph, agent)} toolCount={own.length} />
               {own.length === 0 && <div className="text-sm text-muted">暂无能力</div>}
               <div className="flex-col gap-sm">
                 {own.map(c => {
@@ -135,6 +161,8 @@ function OntologyTab() {
 
 export default function AgentCenter() {
   const [tab, setTab] = useState('agents');
+  // undefined: list view; null: creating a new agent; string: editing that agent
+  const [editing, setEditing] = useState(undefined);
   return (
     <div>
       <div className="page-header">
@@ -142,11 +170,22 @@ export default function AgentCenter() {
         <span className="text-sm text-muted">Agent、能力、家人与食材都是本体知识图谱中的实体</span>
       </div>
       <div className="page-body">
-        <div className="tabs">
-          <button className={`tab-btn${tab === 'agents' ? ' active' : ''}`} onClick={() => setTab('agents')}>🤖 Agent 与能力</button>
-          <button className={`tab-btn${tab === 'ontology' ? ' active' : ''}`} onClick={() => setTab('ontology')}>🕸️ 本体模型</button>
-        </div>
-        {tab === 'agents' ? <AgentsTab /> : <OntologyTab />}
+        {editing !== undefined ? (
+          <AgentConfigEditor
+            key={editing || 'new'}
+            agentId={editing}
+            onClose={() => setEditing(undefined)}
+            onSaved={id => setEditing(id)}
+          />
+        ) : (
+          <>
+            <div className="tabs">
+              <button className={`tab-btn${tab === 'agents' ? ' active' : ''}`} onClick={() => setTab('agents')}>🤖 Agent 与能力</button>
+              <button className={`tab-btn${tab === 'ontology' ? ' active' : ''}`} onClick={() => setTab('ontology')}>🕸️ 本体模型</button>
+            </div>
+            {tab === 'agents' ? <AgentsTab onConfigure={setEditing} /> : <OntologyTab />}
+          </>
+        )}
       </div>
     </div>
   );

@@ -20,9 +20,9 @@ function HomeBanner() {
         <div style={{ fontSize: 13, opacity: 0.9, fontWeight: 600 }}>
           {new Date().toLocaleDateString('zh-CN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} · {season.emoji} {season.label}
         </div>
-        <h1 style={{ fontSize: 26, fontWeight: 900, margin: '4px 0' }}>{greeting}，今天全家吃点什么？🥗</h1>
+        <h1 style={{ fontSize: 26, fontWeight: 900, margin: '4px 0' }}>{greeting}，欢迎回家！🏡</h1>
         <p style={{ opacity: 0.92, fontSize: 14 }}>
-          根据 {members.length} 位家人的健康档案，优先推荐{season.label}时令食材与简单食谱
+          饮食、健康、任务、旅行 Agent 协同工作，根据 {members.length} 位家人的档案为全家提供{season.label}贴心建议
         </p>
       </div>
       <div className="banner-bg-emoji">{season.emoji}</div>
@@ -30,7 +30,7 @@ function HomeBanner() {
   );
 }
 
-export default function FoodHome() {
+export default function FamilyHome() {
   const [views, setViews] = useState(loadViews);
   const [freshIds, setFreshIds] = useState([]);
   const [profileFresh, setProfileFresh] = useState(false);

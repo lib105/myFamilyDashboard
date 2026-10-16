@@ -1,5 +1,6 @@
 import { extractProfileUpdates } from './profileExtractor.js';
 import { getCapabilities, getMembers, findIngredientsInText } from '../ontology/queries.js';
+import { findTrip } from './familyAgents.js';
 
 const CATEGORY_WORDS = [
   ['fruit', /水果|果子/], ['vegetable', /蔬菜|青菜|菜蔬/], ['protein', /肉|蛋白|蛋奶|豆制品/],
@@ -52,6 +53,61 @@ export function parseCapabilityCommand(text) {
   return null;
 }
 
+const SCHEDULE_RE = /^((?:每天|每日|每晚|每早|每周[一二三四五六日天]?|每月|今天|明天|后天|今晚|明早|明晚)?(?:早上|晚上|中午|下午|上午|睡前|饭后|饭前|早晚)?\s*(?:\d{1,2}\s*[点:：]\s*(?:\d{1,2}\s*分?|半)?)?)/;
+const REPEAT_WORDS = [['daily', /每天|每日/], ['weekly', /每周/], ['monthly', /每月/]];
+
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const memberNames = (graph) => getMembers(graph).map(m => m.name).sort((a, b) => b.length - a.length);
+const isEnabled = (graph, id) => graph.getEntity(id) && graph.getEntity(id).enabled !== false;
+
+/** "给小明 整理书桌 10积分 每天" → { title, assignees, points, repeatType } */
+export function parseTaskSpec(text, graph) {
+  let rest = String(text || '');
+  let points;
+  rest = rest.replace(/(\d+)\s*(?:个)?(?:积分|分)/, (m, n) => { points = Number(n); return ' '; });
+  const repeatType = REPEAT_WORDS.find(([, re]) => re.test(rest))?.[0] || 'once';
+  REPEAT_WORDS.forEach(([, re]) => { rest = rest.replace(re, ' '); });
+  const assignees = [];
+  memberNames(graph).forEach(name => {
+    if (!rest.includes(name)) return;
+    assignees.push(name);
+    rest = rest.replace(new RegExp(`(?:给|让|由)?${escapeRe(name)}(?:负责|来)?`, 'g'), ' ');
+  });
+  const title = rest.replace(/^[\s:：,，、]+|[\s,，、。]+$/g, '').replace(/\s+/g, ' ');
+  return { title, assignees, points, repeatType };
+}
+
+/** "爸爸每晚9点测血压" → { member, schedule, title } */
+export function parseReminderSpec(text, graph) {
+  let rest = String(text || '').trim();
+  let member;
+  const who = [...memberNames(graph), '全家', '大家'].find(n => rest.startsWith(n));
+  if (who) {
+    member = ['全家', '大家'].includes(who) ? undefined : who;
+    rest = rest.slice(who.length);
+  }
+  rest = rest.replace(/^[\s:：,，]+/, '');
+  const schedule = rest.match(SCHEDULE_RE)?.[1].trim() || '';
+  const title = rest.slice(schedule ? rest.indexOf(schedule) + schedule.length : 0)
+    .replace(/^[\s,，]*(?:要|记得|按时|去|该)?/, '').replace(/[\s,，。！!]+$/, '').trim();
+  return { member, schedule, title: title || rest };
+}
+
+/** Commands for the task / health agents that should bypass profile extraction. */
+export function parseAgentCommand(text, graph) {
+  const t = text.trim();
+  let m = t.match(/^(?:请)?(?:帮我)?(?:添加|新增|创建|安排|布置)(?:一个|一项)?(?:新的?)?(?:家庭)?任务\s*[:：]?\s*(.+)$/);
+  if (m && isEnabled(graph, 'add_task')) return { capabilityId: 'add_task', args: parseTaskSpec(m[1], graph) };
+  m = t.match(/^(?:请)?(?:帮我)?(?:添加|新增|设置|设)(?:一个|一条)?(?:健康)?提醒\s*[:：]?\s*(.+)$/)
+    || t.match(new RegExp(`^(?:请)?(?:帮我)?提醒\\s*((?:${[...memberNames(graph), '全家', '大家'].map(escapeRe).join('|')}).+)$`));
+  if (m && isEnabled(graph, 'add_health_reminder')) return { capabilityId: 'add_health_reminder', args: parseReminderSpec(m[1], graph) };
+  if (/完成|做完|打卡|搞定/.test(t) && isEnabled(graph, 'complete_task')) {
+    const task = graph.findEntities('Task').find(x => t.includes(x.title));
+    if (task) return { capabilityId: 'complete_task', args: { task: task.title } };
+  }
+  return null;
+}
+
 /** Extracts arguments for a capability from free text (local mode). */
 export function extractArgs(capability, text, graph) {
   switch (capability.handler) {
@@ -70,6 +126,19 @@ export function extractArgs(capability, text, graph) {
       return { items: findIngredientsInText(graph, text).map(f => f.ingredient.label) };
     case 'place_order':
       return { items: orderItems(text, graph) };
+    case 'list_trips':
+    case 'trip_checklist':
+      return { trip: text };
+    case 'health_overview':
+    case 'health_reminders':
+    case 'list_tasks':
+      return { member: mentionedMember(text, graph) };
+    case 'complete_task':
+      return { task: text };
+    case 'add_task':
+      return parseTaskSpec(text.replace(/^.*?任务\s*[:：]?/, ''), graph);
+    case 'add_health_reminder':
+      return parseReminderSpec(text.replace(/^.*?提醒\s*[:：]?/, ''), graph);
     default:
       return { input: text };
   }
@@ -77,11 +146,13 @@ export function extractArgs(capability, text, graph) {
 
 /**
  * Local intent router: maps the user's utterance onto one or more Capability
- * entities using the profile extractor and each capability's keywords.
+ * entities using agent commands, the profile extractor and each capability's keywords.
  */
 export function routeLocally(text, graph) {
   const command = parseCapabilityCommand(text);
   if (command) return [{ capabilityId: 'manage_capabilities', args: command }];
+  const agentCommand = parseAgentCommand(text, graph);
+  if (agentCommand) return [agentCommand];
 
   const calls = [];
   const updates = extractProfileUpdates(text, graph);
@@ -94,5 +165,9 @@ export function routeLocally(text, graph) {
     .sort((a, b) => b.score - a.score || (b.c.priority || 0) - (a.c.priority || 0))
     .slice(0, 2);
   scored.forEach(({ c }) => calls.push({ capabilityId: c.id, args: extractArgs(c, text, graph) }));
+  // Open-ended questions about a known trip go to the travel agent.
+  if (!calls.length && findTrip(graph, text) && isEnabled(graph, 'travel_consult')) {
+    calls.push({ capabilityId: 'travel_consult', args: { input: text } });
+  }
   return calls;
 }

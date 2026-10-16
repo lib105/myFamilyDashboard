@@ -8,10 +8,15 @@ import promotions from '../data/food/appDiscounts.json';
 import shipments from '../data/food/logistics.json';
 import agentData from '../data/food/agents.json';
 import members from '../data/members.json';
+import trips from '../data/trips.json';
+import tasks from '../data/tasks.json';
+import reminders from '../data/healthReminders.json';
 
 export const condId = (id) => `cond_${id}`;
 export const allergenId = (id) => `allergen_${id}`;
 export const ingId = (id) => `ing_${id}`;
+
+const memberName = (id) => members.find(m => m.id === id)?.name || '';
 
 /** Loads static local knowledge into the "base" layer of the graph. */
 export function seedBase(graph) {
@@ -57,6 +62,26 @@ export function seedBase(graph) {
     });
 
     shipments.forEach(s => graph.addEntity({ ...s, id: `ship_${s.trackingNo}`, type: 'Shipment' }, 'base'));
+
+    trips.forEach(t => {
+      const { assignments = [], checklist = [], wishes = [], ...props } = t;
+      graph.addEntity({
+        ...props,
+        id: `trip_${t.id}`,
+        type: 'Trip',
+        checklist: checklist.map(({ assignee, ...c }) => ({ ...c, assignee: memberName(assignee) })),
+        assignments: assignments.map(({ memberId, task }) => ({ member: memberName(memberId), task })),
+        wishes: wishes.map(({ memberId, ...w }) => ({ ...w, member: memberName(memberId) })),
+      }, 'base');
+    });
+    tasks.forEach(t => {
+      const { assignedTo = [], ...props } = t;
+      graph.addEntity({ ...props, id: `task_${t.id}`, type: 'Task', assignees: assignedTo.map(memberName).filter(Boolean) }, 'base');
+    });
+    reminders.forEach(r => {
+      const { memberId, ...props } = r;
+      graph.addEntity({ ...props, id: `reminder_${r.id}`, type: 'HealthReminder', member: memberName(memberId) || '全家' }, 'base');
+    });
 
     agentData.agents.forEach(a => graph.addEntity({ ...a, type: 'Agent' }, 'base'));
     agentData.capabilities.forEach(c => {

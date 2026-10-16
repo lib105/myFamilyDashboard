@@ -5,6 +5,21 @@
     { "id": "agent_ingredient", "label": "食材数据 Agent", "emoji": "📚", "description": "采集、查询食材营养与时令数据" },
     { "id": "agent_shopping", "label": "采购 Agent", "emoji": "🛒", "description": "超市比价、汇总其他 App 打折信息、模拟下单" },
     { "id": "agent_logistics", "label": "物流 Agent", "emoji": "🚚", "description": "查询订单与快递物流状态" },
+    { "id": "agent_travel", "label": "旅行 Agent", "emoji": "✈️", "description": "管理家庭旅行计划、行前清单与孩子们的旅行心愿，提供出行建议",
+      "agentMd": "# 角色\n你是家庭的旅行规划师，熟悉亲子出行。\n\n# 行为准则\n- 先确认目的地、出行时间、预算和同行成员\n- 给出的建议要兼顾老人与孩子的体力和健康状况\n- 涉及签证、证件、保险等事项时提醒用户以官方信息为准",
+      "skillMd": "# 技能\n- 查询家庭旅行计划（目的地、时间、预算、状态）\n- 跟踪行前准备清单并勾选完成\n- 汇总孩子们的旅行心愿\n- 结合知识库与参考网址给出行程与攻略建议",
+      "contextMd": "# 家庭出行偏好\n- 每年至少一次亲子旅行，偏好寒暑假出行\n- 出行预算一般在 1.5～2.5 万元\n- 小花对花生过敏，外出就餐需提前确认",
+      "starters": ["我们有哪些旅行计划", "大阪行前清单还差什么", "三亚亲子游有什么建议"] },
+    { "id": "agent_health", "label": "健康 Agent", "emoji": "💗", "description": "汇总家人健康状况与日常建议，管理用药、体检、疫苗等健康提醒",
+      "agentMd": "# 角色\n你是家庭健康管家，语气温和、简洁。\n\n# 行为准则\n- 结合家庭成员的健康档案给出日常生活建议\n- 不做诊断、不开药方；出现严重或急性症状时建议立即就医\n- 所有建议仅供参考，不能替代医生意见",
+      "skillMd": "# 技能\n- 汇总全家健康状况与日常建议\n- 管理用药、监测、体检、疫苗等健康提醒（查看/新增/完成）\n- 基于知识库回答常见健康问题",
+      "contextMd": "# 家庭健康背景\n- 爸爸有高血压，需要每天测量血压并按时服药\n- 妈妈有过敏性鼻炎，换季时注意防护\n- 小明免疫力偏低，换季容易感冒",
+      "starters": ["全家健康状况怎么样", "今天有哪些健康提醒", "提醒爸爸每晚9点测血压"] },
+    { "id": "agent_task", "label": "任务 Agent", "emoji": "✅", "description": "管理家庭任务（家务、学习等），分配成员、打卡完成并统计积分",
+      "agentMd": "# 角色\n你是家庭任务管家，帮助家人合理分工、养成好习惯。\n\n# 行为准则\n- 分配任务时考虑年龄与能力，孩子的任务以鼓励为主\n- 完成任务后给予积极反馈并累计积分",
+      "skillMd": "# 技能\n- 查看家庭任务与完成情况、积分排行\n- 新增任务并分配给家庭成员\n- 标记任务完成（打卡）\n- 根据家庭情况给出分工建议",
+      "contextMd": "# 家庭任务约定\n- 孩子们每天完成任务可获得积分，积分可兑换周末活动\n- 每周日晚上全家一起复盘本周任务",
+      "starters": ["今天有哪些家庭任务", "浇花完成了", "添加任务 给小明 整理书桌 10积分"] },
     { "id": "agent_system", "label": "系统 Agent", "emoji": "🧠", "description": "通过对话管理 Agent 能力（新增/启用/禁用/删除）" },
     { "id": "agent_custom", "label": "自定义 Agent", "emoji": "🧩", "description": "承载用户通过对话新增的能力" }
   ],
@@ -83,6 +98,92 @@
       "keywords": ["快递", "物流", "到哪了", "配送", "订单状态", "送到", "包裹"],
       "examples": ["我的快递到哪了"],
       "params": { "type": "object", "properties": {} }
+    },
+    {
+      "id": "list_trips", "label": "查看旅行计划", "agentId": "agent_travel", "handler": "list_trips", "priority": 30,
+      "description": "列出家庭旅行计划：目的地、时间、预算、状态和行前准备进度。",
+      "keywords": ["旅行", "旅游", "出行", "行程", "度假", "出游", "旅行计划"],
+      "examples": ["我们有哪些旅行计划"],
+      "params": { "type": "object", "properties": { "trip": { "type": "string", "description": "目的地或旅行名称，可选" } } }
+    },
+    {
+      "id": "trip_checklist", "label": "行前准备清单", "agentId": "agent_travel", "handler": "trip_checklist", "priority": 35,
+      "description": "查看某次旅行的行前准备清单、成员分工与孩子心愿，并提示未完成事项。",
+      "keywords": ["行前", "清单", "行李", "签证", "打包", "出发前", "心愿"],
+      "examples": ["大阪行前清单还差什么"],
+      "params": { "type": "object", "properties": { "trip": { "type": "string", "description": "目的地或旅行名称" } } }
+    },
+    {
+      "id": "travel_consult", "label": "旅行建议咨询", "agentId": "agent_travel", "handler": "agent_consult", "priority": 20,
+      "description": "基于 Agent 配置（Agent.md/Skill.md/Context.md）与知识库，回答行程安排、景点、攻略等旅行问题。",
+      "keywords": ["攻略", "景点", "去哪玩", "玩什么", "旅行建议", "怎么玩", "亲子游"],
+      "examples": ["三亚亲子游有什么建议"],
+      "params": { "type": "object", "properties": { "input": { "type": "string", "description": "用户的问题" } }, "required": ["input"] }
+    },
+    {
+      "id": "health_overview", "label": "家庭健康概览", "agentId": "agent_health", "handler": "health_overview", "priority": 30,
+      "description": "汇总全家健康状况、过敏情况和日常生活建议。",
+      "keywords": ["健康状况", "健康概览", "健康建议", "身体怎么样", "养生", "保健"],
+      "examples": ["全家健康状况怎么样"],
+      "params": { "type": "object", "properties": { "member": { "type": "string", "description": "只看某个成员，可选" } } }
+    },
+    {
+      "id": "health_reminders", "label": "健康提醒", "agentId": "agent_health", "handler": "health_reminders", "priority": 30,
+      "description": "查看用药、监测、体检、疫苗、复查等健康提醒。",
+      "keywords": ["提醒", "吃药", "用药", "体检", "复查", "疫苗", "服药"],
+      "examples": ["今天有哪些健康提醒"],
+      "params": { "type": "object", "properties": { "member": { "type": "string" } } }
+    },
+    {
+      "id": "add_health_reminder", "label": "新增健康提醒", "agentId": "agent_health", "handler": "add_health_reminder", "priority": 60,
+      "description": "为家庭成员新增健康提醒，例如“提醒爸爸每晚9点测血压”。",
+      "keywords": ["添加提醒", "新增提醒", "设置提醒"],
+      "examples": ["提醒爸爸每晚9点测血压"],
+      "params": { "type": "object", "properties": {
+        "member": { "type": "string", "description": "成员称呼，不填表示全家" },
+        "title": { "type": "string", "description": "提醒内容" },
+        "schedule": { "type": "string", "description": "时间/频率，如 每天 21:00" }
+      }, "required": ["title"] }
+    },
+    {
+      "id": "health_consult", "label": "健康问题咨询", "agentId": "agent_health", "handler": "agent_consult", "priority": 15,
+      "description": "基于 Agent 配置与知识库，回答日常健康、作息、运动等问题（仅供参考）。",
+      "keywords": ["健康咨询", "怎么调理", "注意什么", "作息", "运动建议"],
+      "examples": ["高血压平时要注意什么"],
+      "params": { "type": "object", "properties": { "input": { "type": "string" } }, "required": ["input"] }
+    },
+    {
+      "id": "list_tasks", "label": "查看家庭任务", "agentId": "agent_task", "handler": "list_tasks", "priority": 30,
+      "description": "查看家庭任务、分配情况、完成进度和积分排行。",
+      "keywords": ["任务", "家务", "待办", "积分", "排行", "打卡情况"],
+      "examples": ["今天有哪些家庭任务"],
+      "params": { "type": "object", "properties": { "member": { "type": "string", "description": "只看某个成员，可选" } } }
+    },
+    {
+      "id": "add_task", "label": "新增家庭任务", "agentId": "agent_task", "handler": "add_task", "priority": 60,
+      "description": "新增家庭任务并分配给成员，例如“添加任务 给小明 整理书桌 10积分”。",
+      "keywords": ["添加任务", "新增任务", "安排任务", "布置任务"],
+      "examples": ["添加任务 给小明 整理书桌 10积分"],
+      "params": { "type": "object", "properties": {
+        "title": { "type": "string" },
+        "assignees": { "type": "array", "items": { "type": "string" }, "description": "成员称呼" },
+        "points": { "type": "number" },
+        "repeatType": { "type": "string", "enum": ["once", "daily", "weekly", "monthly"] }
+      }, "required": ["title"] }
+    },
+    {
+      "id": "complete_task", "label": "完成任务打卡", "agentId": "agent_task", "handler": "complete_task", "priority": 55,
+      "description": "把某个家庭任务标记为已完成并累计积分。",
+      "keywords": ["完成任务", "打卡", "做完了", "完成了"],
+      "examples": ["浇花完成了"],
+      "params": { "type": "object", "properties": { "task": { "type": "string", "description": "任务名称" } }, "required": ["task"] }
+    },
+    {
+      "id": "task_plan", "label": "任务分工建议", "agentId": "agent_task", "handler": "agent_consult", "priority": 15,
+      "description": "基于 Agent 配置与知识库，给出家务分工、习惯养成等建议。",
+      "keywords": ["分工", "怎么安排", "任务建议", "习惯养成"],
+      "examples": ["周末家务怎么分工"],
+      "params": { "type": "object", "properties": { "input": { "type": "string" } }, "required": ["input"] }
     },
     {
       "id": "manage_capabilities", "label": "管理 Agent 能力", "agentId": "agent_system", "handler": "manage_capabilities", "priority": 90,

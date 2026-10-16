@@ -4,6 +4,7 @@ import { INGREDIENT_CATEGORIES } from '../../ontology/schema.js';
 import { getIngredientFacts, getFamilyProfiles, getAgents, getCapabilities } from '../../ontology/queries.js';
 import { recommendIngredients, recommendRecipes } from '../../agents/recommender.js';
 import { confirmOrder, cancelOrder } from '../../agents/capabilities.js';
+import { TripsView, TasksView, HealthView, RemindersView } from './FamilyViews.jsx';
 
 const VIEW_META = {
   produce:         { emoji: '🥗', color: '#27AE60' },
@@ -14,10 +15,14 @@ const VIEW_META = {
   order:           { emoji: '🧾', color: '#9B59B6' },
   delivery:        { emoji: '🚚', color: '#1ABC9C' },
   capabilities:    { emoji: '🧠', color: '#34495E' },
+  trips:           { emoji: '✈️', color: '#4A90D9' },
+  tasks:           { emoji: '✅', color: '#27AE60' },
+  health:          { emoji: '💗', color: '#E91E8C' },
+  reminders:       { emoji: '⏰', color: '#E74C3C' },
   text:            { emoji: '🧩', color: '#7F8C8D' },
 };
 
-const DISCLAIMER = '健康饮食建议仅供参考，不能替代医生或营养师的专业意见。';
+const DISCLAIMER = '健康与饮食建议仅供参考，不能替代医生或营养师的专业意见。';
 
 function ReasonChips({ reasons, warnings }) {
   const uniq = (arr) => [...new Map(arr.map(r => [`${r.member.id}-${r.condition.id}`, r])).values()];
@@ -327,6 +332,10 @@ const RENDERERS = {
   order: OrderView,
   delivery: DeliveryView,
   capabilities: CapabilitiesView,
+  trips: TripsView,
+  tasks: TasksView,
+  health: HealthView,
+  reminders: RemindersView,
   text: TextView,
 };
 
@@ -347,7 +356,7 @@ export default function ViewCard({ view, fresh, onClose }) {
         </div>
       </div>
       <Renderer args={view.args} view={view} />
-      {['produce', 'recipes', 'ingredient_info'].includes(view.type) && (
+      {['produce', 'recipes', 'ingredient_info', 'health'].includes(view.type) && (
         <div className="text-xs text-muted mt-sm">ℹ️ {DISCLAIMER}</div>
       )}
     </div>

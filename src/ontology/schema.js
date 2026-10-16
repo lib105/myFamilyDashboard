@@ -1,5 +1,5 @@
 /**
- * Ontology schema (TBox) for the family food dashboard.
+ * Ontology schema (TBox) for the family dashboard.
  *
  * Everything the app knows is expressed as typed entities (instances of a
  * class) connected by typed relations. Agents and their capabilities are part
@@ -21,6 +21,9 @@ export const CLASSES = {
   Promotion:       { label: '优惠活动',   description: '其他 App 的打折、团购信息' },
   Order:           { label: '订单',       description: '模拟下单生成的订单' },
   Shipment:        { label: '物流单',     description: '快递/配送信息' },
+  Trip:            { label: '旅行计划',   description: '家庭出行计划，含预算、行前清单与心愿' },
+  Task:            { label: '家庭任务',   description: '家务/学习等周期性任务，完成可获得积分' },
+  HealthReminder:  { label: '健康提醒',   description: '用药、体检、疫苗、复查等健康提醒' },
   Agent:           { label: 'AI Agent',   description: '承担某一类职责的智能体' },
   Capability:      { label: '能力',       description: 'Agent 可被调用的一项能力（工具）' },
 };

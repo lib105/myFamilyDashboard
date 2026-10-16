@@ -1,15 +1,9 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
 const NAV_ITEMS = [
-  { path: '/',         emoji: '🥗', label: '饮食首页', end: true },
+  { path: '/',         emoji: '🏡', label: '家庭首页', end: true },
   { path: '/agents',   emoji: '🧠', label: 'Agent能力' },
   { path: '/settings', emoji: '⚙️', label: 'AI 设置' },
-  { path: '/overview', emoji: '🏠', label: '家庭概览' },
-  { path: '/trips',    emoji: '✈️', label: '旅行' },
-  { path: '/tasks',    emoji: '✅', label: '任务' },
-  { path: '/shopping', emoji: '🛒', label: '购物' },
-  { path: '/deals',    emoji: '🏷️', label: '促销' },
-  { path: '/agency-upload', emoji: '📤', label: '商家投稿' },
   { path: '/login',    emoji: '👤', label: '登录' },
 ];
 
