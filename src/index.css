@@ -922,6 +922,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .suggestion-chip:disabled { opacity: 0.5; cursor: not-allowed; }
 .chat-input { display: flex; gap: var(--spacing-sm); align-items: stretch; }
 .chat-input textarea { resize: none; }
+.chat-input .btn { white-space: nowrap; }
 
 @media (max-width: 1100px) {
   .chat-panel { height: 520px; }

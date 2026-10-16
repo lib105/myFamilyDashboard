@@ -280,7 +280,7 @@ function placeOrder(args, { graph }) {
   });
   return {
     reply: `🧾 已在「${best.store.label}」生成待确认订单（模拟），合计 ¥${best.total}，${best.store.delivery}。请在首页订单卡片中确认下单。${unknown.length ? `\n未识别：${unknown.join('、')}` : ''}${resolved.length ? '' : '\n（未指定食材，已按当季推荐选择）'}`,
-    views: [{ type: 'order', title: '待确认订单', args: { orderId: order.id } }],
+    views: [{ type: 'order', title: '采购订单（模拟）', args: { orderId: order.id } }],
   };
 }
 
