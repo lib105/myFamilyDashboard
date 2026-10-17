@@ -22,7 +22,8 @@ function AnswerStage({ answer, views, freshIds, onClose, onCloseView }) {
         </div>
       </div>
       <div className="answer-question">🙋 {answer.question}</div>
-      {answer.reply && <div className="answer-reply">{answer.reply}</div>}
+      {/* Agent template cards already present the answer; plain text is only a fallback. */}
+      {answer.reply && !shown.length && <div className="answer-reply">{answer.reply}</div>}
       {answer.trace?.length > 0 && (
         <div className="chat-trace mb-sm">
           {answer.trace.map((t, j) => (
@@ -121,7 +122,6 @@ export default function FamilyHome() {
 
   return (
     <div className="page-body home-page">
-      {!layout.hidden.includes('weather') && <WeatherBar />}
       <div className={`home-grid${profilesHidden ? ' no-profiles' : ''}`}>
         {!profilesHidden && (
           <aside className="home-profiles">
@@ -129,6 +129,7 @@ export default function FamilyHome() {
           </aside>
         )}
         <div className="home-main" ref={stageRef}>
+          {!layout.hidden.includes('weather') && <WeatherBar />}
           {answer && (
             <AnswerStage
               answer={answer}

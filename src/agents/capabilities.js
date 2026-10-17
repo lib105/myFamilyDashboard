@@ -8,6 +8,7 @@ import { recommendIngredients, recommendRecipes, currentMonth } from './recommen
 import { chatCompletion, isAIConfigured, parseJsonFromText } from './llmClient.js';
 import { getAgentConfig, buildAgentPrompt, createCustomCapability } from './agentConfig.js';
 import { FAMILY_HANDLERS } from './familyAgents.js';
+import { parseLayoutCommand, normalizeLayoutCommand, describeLayoutCommand } from './homeLayout.js';
 
 export { describeFamily };
 
@@ -360,6 +361,15 @@ async function runCustomCapability(cap, args, { graph, text }) {
   return { reply: cap.reply, views: [{ type: 'text', title: cap.label, data: { text: cap.reply } }] };
 }
 
+/** Home-page agent: turns a layout command into { layout } for the home page to apply. */
+function arrangeHome(args, { text }) {
+  const layout = normalizeLayoutCommand(args) || parseLayoutCommand(asText(args.input) || text);
+  if (!layout) {
+    return { reply: '🏠 没听懂要怎么调整首页～可以说“隐藏家庭档案”“把超市打折信息放到最上面”或“恢复默认布局”。', views: [] };
+  }
+  return { reply: describeLayoutCommand(layout), views: [], layout };
+}
+
 const HANDLERS = {
   update_member_profile: updateMemberProfile,
   view_family_profile: viewFamilyProfile,
@@ -371,6 +381,7 @@ const HANDLERS = {
   place_order: placeOrder,
   track_delivery: trackDelivery,
   manage_capabilities: manageCapabilities,
+  arrange_home: arrangeHome,
   ...FAMILY_HANDLERS,
 };
 
@@ -383,6 +394,7 @@ export async function executeCapability(capability, args, ctx) {
   return {
     reply: result.reply,
     views: (result.views || []).map(v => ({ ...v, capabilityId: capability.id })),
+    ...(result.layout ? { layout: result.layout } : {}),
   };
 }
 
