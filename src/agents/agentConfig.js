@@ -76,7 +76,7 @@ export function createCustomCapability(graph, { label, keywords, reply = '', pro
   const cap = graph.addEntity({
     id: newId('custom'), type: 'Capability', label, keywords, kind: prompt ? 'llm' : 'mock', reply, prompt,
     description: prompt ? `用户自定义 AI 能力：${prompt.slice(0, 60)}` : `用户自定义能力，返回：${reply.slice(0, 60)}`,
-    enabled: true, priority: 10, agentId,
+    enabled: true, priority: 10,
     params: { type: 'object', properties: { input: { type: 'string', description: '用户原始问题' } } },
   });
   graph.addTriple(cap.id, 'providedBy', agentId);

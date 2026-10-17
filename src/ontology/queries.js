@@ -71,6 +71,20 @@ export function removeMember(graph, memberId) {
   graph.removeEntity(memberId);
 }
 
+/** Resolves FamilyMember entity ids (dropping ids whose member no longer exists). */
+export function membersByIds(graph, ids) {
+  return (ids || []).map(id => graph.getEntity(id)).filter(e => e?.type === 'FamilyMember');
+}
+
+/** Name of a referenced FamilyMember, or '' when unset / deleted. */
+export const memberNameOf = (graph, id) => membersByIds(graph, [id])[0]?.name || '';
+
+/** Members linked to `subject` through a relation such as assignedTo / reminderFor. */
+export const relatedMembers = (graph, subjectId, relation) => membersByIds(graph, graph.objects(subjectId, relation));
+
+/** Comma-separated member names, falling back to "全家" when nobody is linked. */
+export const memberNames = (members) => members.map(m => m.name).join('、') || '全家';
+
 /* ---------- vocabulary resolution (synonyms → ontology entities) ---------- */
 function resolveByLabel(graph, type, text) {
   const n = normalize(text);
