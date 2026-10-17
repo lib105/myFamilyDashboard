@@ -67,3 +67,17 @@ export function saveAnswer(answer) {
     /* ignore */
   }
 }
+
+const LAYOUT_KEY = 'family-dashboard.home-layout.v1';
+
+/** Home-agent layout: { hidden: moduleId[], pinned: moduleId[] }. */
+export function loadLayout() {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(LAYOUT_KEY) || 'null');
+    const list = (x) => (Array.isArray(x) ? x.filter(s => typeof s === 'string') : []);
+    return { hidden: list(v?.hidden), pinned: list(v?.pinned) };
+  } catch {
+    return { hidden: [], pinned: [] };
+  }
+}
+export const saveLayout = (layout) => write(LAYOUT_KEY, layout);
