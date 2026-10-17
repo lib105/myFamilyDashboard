@@ -40,8 +40,9 @@ Every Agent can be configured (Agent.md / Skill.md / Context.md, tools, knowledg
 
 | 层 | 内容 |
 |----|------|
-| Schema（`src/ontology/schema.js`） | 类：家庭成员、健康状况、过敏原、食材、季节、食谱、超市、价格报价、优惠活动、订单、物流单、旅行计划、家庭任务、健康提醒、Agent、能力；关系：`hasCondition`、`allergicTo`、`hasAttribute`（开放属性）、`benefits`、`cautionFor`、`containsAllergen`、`availableIn`、`usesIngredient`、`offerOf`、`soldAt`、`promotes`、`orderedFrom`、`orderContains`、`shipmentOf`、`providedBy` |
+| Schema（`src/ontology/schema.js`） | 类：家庭成员、健康状况、过敏原、食材、季节、食谱、超市、价格报价、优惠活动、订单、物流单、旅行计划、家庭任务、健康提醒、Agent、能力；关系：`hasCondition`、`allergicTo`、`hasAttribute`（开放属性）、`benefits`、`cautionFor`、`containsAllergen`、`availableIn`、`usesIngredient`、`offerOf`、`soldAt`、`promotes`、`orderedFrom`、`orderContains`、`shipmentOf`、`assignedTo`（任务→成员）、`reminderFor`（健康提醒→成员）、`providedBy` |
 | 知识图谱（`src/ontology/graph.js`） | 按 Schema 校验的三元组存储；`base` 层来自本地模拟数据，`user` 层由对话产生并持久化到 localStorage |
+| 设计约束 | 实体之间的联系一律用关系（三元组）表达，不在属性里冗余保存名称或 id：任务/健康提醒通过 `assignedTo`/`reminderFor` 指向家庭成员（无关系即“全家”），能力只通过 `providedBy` 归属 Agent；旅行清单、心愿等嵌套值对象只保存成员实体 id，显示时从图谱解析姓名。删除成员会级联移除相关关系；旧版本持久化的名称引用在启动时自动迁移（`migrateLegacyKnowledge`） |
 | Agent（`src/agents/`） | `router.js` 本地意图路由，`profileExtractor.js` 档案抽取，`orchestrator.js` 规划与执行（本地或 LLM），`capabilities.js` 能力实现，`familyAgents.js` 旅行/健康/任务能力，`agentConfig.js` Agent 配置与知识库，`recommender.js` 基于图谱推理的推荐 |
 
 > 健康饮食建议仅供参考，不能替代医生或营养师的专业意见。

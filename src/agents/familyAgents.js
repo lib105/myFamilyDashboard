@@ -1,8 +1,14 @@
 /**
  * Built-in capabilities of the travel, health and task agents. Trips, tasks
- * and health reminders are ontology entities (Trip / Task / HealthReminder).
+ * and health reminders are ontology entities (Trip / Task / HealthReminder)
+ * linked to FamilyMember entities through relations (Task -assignedTo->,
+ * HealthReminder -reminderFor->); trip checklist items / wishes hold member
+ * entity ids. Member names are always resolved from the graph at read time.
  */
-import { findMember, getMembers, getFamilyProfiles, getCapabilityAgent, describeFamily, newId } from '../ontology/queries.js';
+import {
+  findMember, getMembers, getFamilyProfiles, getCapabilityAgent, describeFamily, newId,
+  memberNameOf, relatedMembers, memberNames,
+} from '../ontology/queries.js';
 import { getAgentConfig, consultAgent } from './agentConfig.js';
 
 const asArray = (v) => (Array.isArray(v) ? v : v === undefined || v === null || v === '' ? [] : [v]);
@@ -69,14 +75,17 @@ function tripChecklist(args, { graph }) {
   const trip = findTrip(graph, args.trip) || trips.find(t => t.status === 'planning') || trips[0];
   if (!trip) return { reply: '还没有旅行计划。', views: [] };
   const pending = (trip.checklist || []).filter(c => !c.done);
-  const wishes = (trip.wishes || []).map(w => `${w.member}：${w.content}`);
+  const wishes = (trip.wishes || []).map(w => `${memberNameOf(graph, w.memberId) || '家人'}：${w.content}`);
   return {
-    reply: `🧳 ${trip.title} 行前清单：${pending.length ? `还有 ${pending.length} 项未完成\n${pending.map(c => `☐ ${c.item}${c.assignee ? `（${c.assignee}）` : ''}`).join('\n')}` : '全部准备好啦 🎉'}${wishes.length ? `\n\n💭 心愿：\n${wishes.join('\n')}` : ''}`,
+    reply: `🧳 ${trip.title} 行前清单：${pending.length ? `还有 ${pending.length} 项未完成\n${pending.map(c => { const who = memberNameOf(graph, c.memberId); return `☐ ${c.item}${who ? `（${who}）` : ''}`; }).join('\n')}` : '全部准备好啦 🎉'}${wishes.length ? `\n\n💭 心愿：\n${wishes.join('\n')}` : ''}`,
     views: [{ type: 'trips', title: `${trip.title} · 行前清单`, args: { tripId: trip.id } }],
   };
 }
 
 /* ---------- health ---------- */
+/** FamilyMember entities a reminder is for (empty = whole family). */
+export const reminderMembers = (graph, reminder) => relatedMembers(graph, reminder.id, 'reminderFor');
+
 export const getReminders = (graph) => graph.findEntities('HealthReminder')
   .sort((a, b) => Number(a.done) - Number(b.done) || (a.layer === 'user' ? -1 : 0) - (b.layer === 'user' ? -1 : 0));
 
@@ -87,7 +96,7 @@ export function toggleReminder(graph, id) {
 
 function describeReminders(graph) {
   const list = getReminders(graph).filter(r => !r.done);
-  return list.length ? `## 健康提醒\n${list.map(r => `- ${r.member}：${r.title}（${r.schedule}）`).join('\n')}` : '';
+  return list.length ? `## 健康提醒\n${list.map(r => `- ${memberNames(reminderMembers(graph, r))}：${r.title}（${r.schedule}）`).join('\n')}` : '';
 }
 
 function healthOverview(args, { graph }) {
@@ -109,10 +118,14 @@ function healthOverview(args, { graph }) {
 
 function healthReminders(args, { graph }) {
   const name = asText(args.member);
-  const list = getReminders(graph).filter(r => !name || r.member === name || r.member === '全家');
+  const member = name && findMember(graph, name);
+  const list = getReminders(graph).filter(r => {
+    const owners = reminderMembers(graph, r);
+    return !name || !owners.length || owners.some(o => o.id === member?.id);
+  });
   if (!list.length) return { reply: '暂时没有健康提醒，可以说“提醒爸爸每晚9点测血压”。', views: [] };
   return {
-    reply: `⏰ 健康提醒：\n${list.map(r => `${r.done ? '✅' : '⬜'} ${r.emoji} ${r.member}：${r.title}（${r.schedule}）`).join('\n')}`,
+    reply: `⏰ 健康提醒：\n${list.map(r => `${r.done ? '✅' : '⬜'} ${r.emoji} ${memberNames(reminderMembers(graph, r))}：${r.title}（${r.schedule}）`).join('\n')}`,
     views: [{ type: 'reminders', title: '健康提醒' }],
   };
 }
@@ -128,12 +141,16 @@ function addHealthReminder(args, { graph }) {
   const name = asText(args.member);
   const member = name && findMember(graph, name);
   const [, emoji, category] = REMINDER_KINDS.find(([re]) => re.test(title)) || [null, '⏰', '其他'];
-  const reminder = graph.addEntity({
-    id: newId('reminder'), type: 'HealthReminder', title, emoji, category,
-    member: member ? member.name : '全家', schedule: asText(args.schedule) || '待定', done: false,
+  const reminder = graph.batch(() => {
+    const entity = graph.addEntity({
+      id: newId('reminder'), type: 'HealthReminder', title, emoji, category,
+      schedule: asText(args.schedule) || '待定', done: false,
+    });
+    if (member) graph.addTriple(entity.id, 'reminderFor', member.id);
+    return entity;
   });
   return {
-    reply: `⏰ 已新增健康提醒：${reminder.emoji} ${reminder.member}·${reminder.title}（${reminder.schedule}）`,
+    reply: `⏰ 已新增健康提醒：${reminder.emoji} ${member ? member.name : '全家'}·${reminder.title}（${reminder.schedule}）`,
     views: [{ type: 'reminders', title: '健康提醒' }],
   };
 }
@@ -142,13 +159,19 @@ function addHealthReminder(args, { graph }) {
 export const getTasks = (graph) => graph.findEntities('Task')
   .sort((a, b) => Number(a.completed) - Number(b.completed) || (a.layer === 'user' ? -1 : 0) - (b.layer === 'user' ? -1 : 0));
 
-/** Points earned per member from completed tasks. */
+/** FamilyMember entities a task is assigned to (empty = whole family). */
+export const taskAssignees = (graph, task) => relatedMembers(graph, task.id, 'assignedTo');
+
+/** Points earned per member from completed tasks (walks Task -assignedTo-> FamilyMember). */
 export function taskScores(graph) {
-  const scores = Object.fromEntries(getMembers(graph).map(m => [m.name, 0]));
-  getTasks(graph).filter(t => t.completed).forEach(t => (t.assignees || []).forEach(name => {
-    scores[name] = (scores[name] || 0) + (Number(t.points) || 0);
-  }));
-  return Object.entries(scores).map(([name, points]) => ({ name, points })).sort((a, b) => b.points - a.points);
+  return getMembers(graph)
+    .map(m => ({
+      id: m.id,
+      name: m.name,
+      points: graph.subjects('assignedTo', m.id).map(id => graph.getEntity(id))
+        .filter(t => t?.completed).reduce((sum, t) => sum + (Number(t.points) || 0), 0),
+    }))
+    .sort((a, b) => b.points - a.points);
 }
 
 export function toggleTask(graph, id) {
@@ -159,18 +182,19 @@ export function toggleTask(graph, id) {
 function describeTasks(graph) {
   const tasks = getTasks(graph);
   return tasks.length
-    ? `## 家庭任务\n${tasks.map(t => `- ${t.completed ? '[x]' : '[ ]'} ${t.title}（${(t.assignees || []).join('、') || '全家'}，${REPEAT_LABEL[t.repeatType] || ''}，${t.points}积分）`).join('\n')}`
+    ? `## 家庭任务\n${tasks.map(t => `- ${t.completed ? '[x]' : '[ ]'} ${t.title}（${memberNames(taskAssignees(graph, t))}，${REPEAT_LABEL[t.repeatType] || ''}，${t.points}积分）`).join('\n')}`
     : '';
 }
 
 function listTasks(args, { graph }) {
   const name = asText(args.member);
-  const tasks = getTasks(graph).filter(t => !name || (t.assignees || []).includes(name));
+  const member = name && findMember(graph, name);
+  const tasks = getTasks(graph).filter(t => !name || taskAssignees(graph, t).some(m => m.id === member?.id));
   if (!tasks.length) return { reply: '暂时没有家庭任务，可以说“添加任务 给小明 整理书桌 10积分”。', views: [] };
   const pending = tasks.filter(t => !t.completed);
   const top = taskScores(graph).filter(s => s.points > 0).slice(0, 3);
   return {
-    reply: `✅ 家庭任务：已完成 ${tasks.length - pending.length}/${tasks.length}\n${pending.slice(0, 8).map(t => `⬜ ${t.emoji || '📝'} ${t.title}（${(t.assignees || []).join('、') || '全家'}，${t.points}积分）`).join('\n')}${top.length ? `\n\n🏆 积分：${top.map(s => `${s.name} ${s.points}`).join('，')}` : ''}`,
+    reply: `✅ 家庭任务：已完成 ${tasks.length - pending.length}/${tasks.length}\n${pending.slice(0, 8).map(t => `⬜ ${t.emoji || '📝'} ${t.title}（${memberNames(taskAssignees(graph, t))}，${t.points}积分）`).join('\n')}${top.length ? `\n\n🏆 积分：${top.map(s => `${s.name} ${s.points}`).join('，')}` : ''}`,
     views: [{ type: 'tasks', title: name ? `${name}的任务` : '家庭任务' }],
   };
 }
@@ -178,15 +202,21 @@ function listTasks(args, { graph }) {
 function addTask(args, { graph }) {
   const title = asText(args.title);
   if (!title) return { reply: '请告诉我任务内容，例如“添加任务 给小明 整理书桌 10积分”。', views: [] };
-  const assignees = asArray(args.assignees).map(asText).filter(Boolean).map(n => findMember(graph, n)?.name || n);
+  const names = asArray(args.assignees).map(asText).filter(Boolean);
+  const assignees = [...new Set(names.map(n => findMember(graph, n)).filter(Boolean))];
+  const unknown = names.filter(n => !findMember(graph, n));
   const points = Number(args.points);
   const repeatType = REPEAT_LABEL[args.repeatType] ? args.repeatType : 'once';
-  const task = graph.addEntity({
-    id: newId('task'), type: 'Task', title, emoji: '📝', category: '其他', repeatType,
-    assignees, points: Number.isFinite(points) && points >= 0 ? Math.round(points) : 10, completed: false, dueTime: '',
+  const task = graph.batch(() => {
+    const entity = graph.addEntity({
+      id: newId('task'), type: 'Task', title, emoji: '📝', category: '其他', repeatType,
+      points: Number.isFinite(points) && points >= 0 ? Math.round(points) : 10, completed: false, dueTime: '',
+    });
+    assignees.forEach(m => graph.addTriple(entity.id, 'assignedTo', m.id));
+    return entity;
   });
   return {
-    reply: `📝 已新增任务「${task.title}」，负责人：${assignees.join('、') || '全家'}，${REPEAT_LABEL[repeatType]}，${task.points} 积分。`,
+    reply: `📝 已新增任务「${task.title}」，负责人：${memberNames(assignees)}，${REPEAT_LABEL[repeatType]}，${task.points} 积分。${unknown.length ? `\n（家庭档案中没有「${unknown.join('、')}」，未分配给他们，可先在对话中建档）` : ''}`,
     views: [{ type: 'tasks', title: '家庭任务' }],
   };
 }
@@ -199,7 +229,7 @@ function completeTask(args, { graph, text }) {
   if (task.completed) return { reply: `「${task.title}」已经完成过啦 👍`, views: [{ type: 'tasks', title: '家庭任务' }] };
   graph.updateEntity(task.id, { completed: true });
   return {
-    reply: `🎉 「${task.title}」已完成！${(task.assignees || []).join('、') || '全家'} +${task.points} 积分`,
+    reply: `🎉 「${task.title}」已完成！${memberNames(taskAssignees(graph, task))} +${task.points} 积分`,
     views: [{ type: 'tasks', title: '家庭任务' }],
   };
 }

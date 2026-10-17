@@ -43,6 +43,8 @@ export const RELATIONS = {
   orderedFrom:      { label: '下单于',       domain: 'Order',        range: 'Store' },
   orderContains:    { label: '包含食材',     domain: 'Order',        range: 'Ingredient' },
   shipmentOf:       { label: '配送订单',     domain: 'Shipment',     range: 'Order' },
+  assignedTo:       { label: '分配给',       domain: 'Task',         range: 'FamilyMember' },
+  reminderFor:      { label: '提醒对象',     domain: 'HealthReminder', range: 'FamilyMember' },
   providedBy:       { label: '由…提供',      domain: 'Capability',   range: 'Agent' },
 };
 

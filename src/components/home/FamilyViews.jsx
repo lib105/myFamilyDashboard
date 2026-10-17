@@ -1,9 +1,9 @@
 import { useGraph } from '../../ontology/index.js';
-import { getFamilyProfiles } from '../../ontology/queries.js';
+import { getFamilyProfiles, memberNameOf, memberNames } from '../../ontology/queries.js';
 import {
   getTrips, tripProgress, toggleTripItem, TRIP_STATUS,
-  getTasks, taskScores, toggleTask, REPEAT_LABEL,
-  getReminders, toggleReminder,
+  getTasks, taskAssignees, taskScores, toggleTask, REPEAT_LABEL,
+  getReminders, reminderMembers, toggleReminder,
 } from '../../agents/familyAgents.js';
 
 function Progress({ done, total, color }) {
@@ -43,23 +43,26 @@ export function TripsView({ args = {} }) {
               <>
                 <div className="group-title mt-sm">🧳 行前清单</div>
                 <div className="flex-col">
-                  {(trip.checklist || []).map(c => (
-                    <label key={c.id} className={`check-item${c.done ? ' done' : ''}`}>
-                      <input type="checkbox" checked={Boolean(c.done)} onChange={() => toggleTripItem(graph, trip.id, c.id)} />
-                      <span className="check-label text-sm" style={{ flex: 1 }}>{c.item}</span>
-                      {c.assignee && <span className="mini-chip">{c.assignee}</span>}
-                    </label>
-                  ))}
+                  {(trip.checklist || []).map(c => {
+                    const who = memberNameOf(graph, c.memberId);
+                    return (
+                      <label key={c.id} className={`check-item${c.done ? ' done' : ''}`}>
+                        <input type="checkbox" checked={Boolean(c.done)} onChange={() => toggleTripItem(graph, trip.id, c.id)} />
+                        <span className="check-label text-sm" style={{ flex: 1 }}>{c.item}</span>
+                        {who && <span className="mini-chip">{who}</span>}
+                      </label>
+                    );
+                  })}
                 </div>
                 {(trip.assignments || []).length > 0 && (
                   <div className="chip-row mt-sm">
-                    {trip.assignments.map(a => <span key={`${a.member}-${a.task}`} className="mini-chip">👤 {a.member}：{a.task}</span>)}
+                    {trip.assignments.map(a => <span key={`${a.memberId}-${a.task}`} className="mini-chip">👤 {memberNameOf(graph, a.memberId) || '家人'}：{a.task}</span>)}
                   </div>
                 )}
                 {(trip.wishes || []).length > 0 && (
                   <div className="chip-row mt-sm">
                     {trip.wishes.map(w => (
-                      <span key={w.id} className={`mini-chip ${w.status === 'approved' ? 'good' : ''}`}>💭 {w.member}：{w.content}</span>
+                      <span key={w.id} className={`mini-chip ${w.status === 'approved' ? 'good' : ''}`}>💭 {memberNameOf(graph, w.memberId) || '家人'}：{w.content}</span>
                     ))}
                   </div>
                 )}
@@ -93,14 +96,14 @@ export function TasksView() {
             <input type="checkbox" checked={Boolean(t.completed)} onChange={() => toggleTask(graph, t.id)} />
             <span>{t.emoji || '📝'}</span>
             <span className="check-label text-sm" style={{ flex: 1 }}>{t.title}</span>
-            <span className="text-xs text-muted">{(t.assignees || []).join('、') || '全家'} · {REPEAT_LABEL[t.repeatType] || ''}{t.dueTime ? ` · ${t.dueTime}` : ''}</span>
+            <span className="text-xs text-muted">{memberNames(taskAssignees(graph, t))} · {REPEAT_LABEL[t.repeatType] || ''}{t.dueTime ? ` · ${t.dueTime}` : ''}</span>
             <span className="badge badge-warning">+{t.points}</span>
           </label>
         ))}
       </div>
       <div className="chip-row mt-sm">
         {scores.map((s, i) => (
-          <span key={s.name} className={`mini-chip ${i === 0 && s.points > 0 ? 'good' : ''}`}>
+          <span key={s.id} className={`mini-chip ${i === 0 && s.points > 0 ? 'good' : ''}`}>
             {i === 0 && s.points > 0 ? '🏆' : '⭐'} {s.name} {s.points} 分
           </span>
         ))}
@@ -148,7 +151,7 @@ export function RemindersView() {
         <label key={r.id} className={`check-item${r.done ? ' done' : ''}`}>
           <input type="checkbox" checked={Boolean(r.done)} onChange={() => toggleReminder(graph, r.id)} />
           <span>{r.emoji}</span>
-          <span className="check-label text-sm" style={{ flex: 1 }}>{r.member}：{r.title}</span>
+          <span className="check-label text-sm" style={{ flex: 1 }}>{memberNames(reminderMembers(graph, r))}：{r.title}</span>
           <span className="text-xs text-muted">⏰ {r.schedule}</span>
           <span className="badge badge-gray">{r.category}</span>
         </label>
