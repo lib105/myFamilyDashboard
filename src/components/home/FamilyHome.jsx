@@ -6,8 +6,9 @@ import ViewCard from './ViewCard.jsx';
 import WeatherBar from './WeatherBar.jsx';
 import UnansweredDialog from './UnansweredDialog.jsx';
 import {
-  DEFAULT_VIEWS, loadViews, saveViews, mergeViews, stampViews, loadAnswer, saveAnswer,
+  DEFAULT_VIEWS, loadViews, saveViews, mergeViews, stampViews, loadAnswer, saveAnswer, loadLayout, saveLayout,
 } from './homeViews.js';
+import { applyLayoutCommand, arrangeViews, moduleLabel, revealModules } from '../../agents/homeLayout.js';
 
 function AnswerStage({ answer, views, freshIds, onClose, onCloseView }) {
   const shown = answer.viewIds.map(id => views.find(v => v.id === id)).filter(Boolean);
@@ -44,6 +45,7 @@ function AnswerStage({ answer, views, freshIds, onClose, onCloseView }) {
 export default function FamilyHome() {
   const [views, setViews] = useState(loadViews);
   const [answer, setAnswer] = useState(loadAnswer);
+  const [layout, setLayout] = useState(loadLayout);
   const [freshIds, setFreshIds] = useState([]);
   const [profileFresh, setProfileFresh] = useState(false);
   const [unanswered, setUnanswered] = useState(null);
@@ -53,6 +55,7 @@ export default function FamilyHome() {
 
   useEffect(() => saveViews(views), [views]);
   useEffect(() => saveAnswer(answer), [answer]);
+  useEffect(() => saveLayout(layout), [layout]);
 
   useEffect(() => {
     if (!freshIds.length && !profileFresh) return undefined;
@@ -75,19 +78,28 @@ export default function FamilyHome() {
       setUnanswered({ question, ...result.unanswered });
       return null;
     }
-    const incoming = result.views || [];
-    if (incoming.some(v => v.type === 'profile')) setProfileFresh(true);
-    const stamped = stampViews(incoming.filter(v => v.type !== 'profile'));
-    if (stamped.length) {
-      setViews(prev => mergeViews(prev, stamped));
-      setFreshIds(stamped.map(v => v.id));
+    const cmd = result.layout;
+    let incoming = result.views || [];
+    const profileTouched = incoming.some(v => v.type === 'profile');
+    if (profileTouched) setProfileFresh(true);
+    // Showing / pinning a module reuses the cards already on the page; new cards only fill the gaps.
+    const reused = cmd && ['show', 'pin'].includes(cmd.action) ? views.filter(v => cmd.modules.includes(v.type)) : [];
+    if (reused.length) {
+      const have = new Set(reused.map(v => v.type));
+      incoming = incoming.filter(v => !have.has(v.type));
     }
+    const stamped = stampViews(incoming.filter(v => v.type !== 'profile'));
+    if (stamped.length) setViews(prev => mergeViews(prev, stamped));
+    if (stamped.length || reused.length) setFreshIds([...reused, ...stamped].map(v => v.id));
+    // Modules the user just asked about are revealed again, even if previously hidden.
+    const touched = [...stamped.map(v => v.type), ...(profileTouched ? ['profiles'] : [])];
+    setLayout(prev => revealModules(cmd ? applyLayoutCommand(prev, cmd) : prev, touched));
     const next = {
       question,
       reply: result.reply,
       trace: result.trace,
       mode: result.mode,
-      viewIds: stamped.map(v => v.id),
+      viewIds: [...reused, ...stamped].map(v => v.id),
       at: Date.now(),
     };
     setAnswer(next);
@@ -102,16 +114,20 @@ export default function FamilyHome() {
   }, []);
 
   const answerIds = new Set(answer?.viewIds || []);
-  const others = views.filter(v => !answerIds.has(v.id));
+  const others = arrangeViews(views.filter(v => !answerIds.has(v.id)), layout);
   const removeView = id => setViews(prev => prev.filter(x => x.id !== id));
+  const showModule = id => setLayout(prev => applyLayoutCommand(prev, { action: 'show', modules: [id] }));
+  const profilesHidden = layout.hidden.includes('profiles');
 
   return (
     <div className="page-body home-page">
-      <WeatherBar />
-      <div className="home-grid">
-        <aside className="home-profiles">
-          <FamilyProfiles fresh={profileFresh} onAsk={name => { setDraft(`${name}：`); inputRef.current?.focus(); }} />
-        </aside>
+      {!layout.hidden.includes('weather') && <WeatherBar />}
+      <div className={`home-grid${profilesHidden ? ' no-profiles' : ''}`}>
+        {!profilesHidden && (
+          <aside className="home-profiles">
+            <FamilyProfiles fresh={profileFresh} onAsk={name => { setDraft(`${name}：`); inputRef.current?.focus(); }} />
+          </aside>
+        )}
         <div className="home-main" ref={stageRef}>
           {answer && (
             <AnswerStage
@@ -125,6 +141,16 @@ export default function FamilyHome() {
           {!answer && (
             <div className="answer-placeholder">
               💬 在右侧提问，回答会显示在这里
+            </div>
+          )}
+          {layout.hidden.length > 0 && (
+            <div className="chip-row home-hidden" aria-label="已隐藏的模块">
+              <span className="text-xs text-muted">🙈 已隐藏：</span>
+              {layout.hidden.map(id => (
+                <button key={id} type="button" className="suggestion-chip" onClick={() => showModule(id)} title="点击重新显示">
+                  {moduleLabel(id)} ↩
+                </button>
+              ))}
             </div>
           )}
           {others.length > 0 && (

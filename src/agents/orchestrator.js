@@ -1,4 +1,8 @@
-import { routeLocally } from './router.js';
+import { routeLocally, parseCapabilityCommand, parseAgentCommand } from './router.js';
+import {
+  parseLayoutCommand, normalizeLayoutCommand, describeLayoutCommand, moduleOf, moduleLabel,
+  arrangeHomeTool, ARRANGE_HOME_TOOL,
+} from './homeLayout.js';
 import { executeCapability, describeFamily } from './capabilities.js';
 import { chatCompletion, isAIConfigured, loadAISettings } from './llmClient.js';
 import { getAgents, getCapabilities, getCapabilityAgent } from '../ontology/queries.js';
@@ -13,6 +17,7 @@ const HELP = `我是家庭助手，可以这样和我说：
 • “全家健康状况怎么样” / “提醒爸爸每晚9点测血压” —— 健康 Agent
 • “今天有哪些家庭任务” / “添加任务 给小明 整理书桌 10积分” / “浇花完成了” —— 任务 Agent
 • “西兰花哪家超市便宜” / “帮我买2斤猕猴桃” / “我的快递到哪了” —— 比价、模拟下单与物流
+• “隐藏家庭档案” / “把超市打折信息放到最上面” / “恢复默认布局” —— 首页 Agent 调整卡片布局
 • “你能做什么” / “添加能力 名称:xxx 关键词:a,b 回复:xxx” —— 管理和扩展能力`;
 
 const oneLine = (s, n) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, n);
@@ -45,6 +50,7 @@ function systemPrompt(graph) {
     }).join('\n')}`,
     '规则：用户描述家人健康状况/属性时调用 update_member_profile（属性不限，未知属性放进 attributes）；可同时调用多个工具；',
     '旅行、健康、任务相关的开放式问题优先调用对应 Agent 的咨询工具（它会使用该 Agent 的 Agent.md / Skill.md / Context.md 与知识库）；',
+    '用户要求隐藏/显示/置顶首页模块或恢复默认布局时调用 arrange_home；',
     '不需要工具时直接简短回答。健康相关建议仅供参考，不替代医生意见。回答使用中文。',
   ].join('\n');
 }
@@ -55,8 +61,8 @@ async function planWithLLM(text, history, graph, settings) {
     ...history.slice(-8).map(m => ({ role: m.role, content: m.text })),
     { role: 'user', content: text },
   ];
-  const msg = await chatCompletion({ messages, tools: toolsFromCapabilities(graph), settings });
-  const calls = (msg.tool_calls || []).map(tc => {
+  const msg = await chatCompletion({ messages, tools: [...toolsFromCapabilities(graph), arrangeHomeTool()], settings });
+  const parsed = (msg.tool_calls || []).map(tc => {
     let args = {};
     try {
       args = JSON.parse(tc.function?.arguments || '{}');
@@ -64,8 +70,10 @@ async function planWithLLM(text, history, graph, settings) {
       /* ignore malformed arguments */
     }
     return { capabilityId: tc.function?.name, args };
-  }).filter(c => graph.getEntity(c.capabilityId)?.type === 'Capability');
-  return { calls, content: msg.content || '' };
+  });
+  const layoutCall = parsed.find(c => c.capabilityId === ARRANGE_HOME_TOOL);
+  const calls = parsed.filter(c => graph.getEntity(c.capabilityId)?.type === 'Capability');
+  return { calls, content: msg.content || '', layout: layoutCall ? normalizeLayoutCommand(layoutCall.args) : null };
 }
 
 /**
@@ -79,12 +87,16 @@ export async function handleUserMessage(text, { graph, history = [] }) {
   let llmContent = '';
   let mode = 'local';
   let note = '';
+  // Home-page agent: explicit layout commands are handled deterministically in both modes.
+  let layout = parseCapabilityCommand(text) || parseAgentCommand(text, graph) ? null : parseLayoutCommand(text);
 
-  if (isAIConfigured(settings)) {
+  if (layout) calls = [];
+  else if (isAIConfigured(settings)) {
     try {
       const plan = await planWithLLM(text, history, graph, settings);
       calls = plan.calls;
       llmContent = plan.content;
+      layout = plan.layout;
       mode = 'llm';
     } catch (e) {
       note = `⚠️ AI 调用失败，已切换到本地模式：${e.message}`;
@@ -102,9 +114,21 @@ export async function handleUserMessage(text, { graph, history = [] }) {
 
   const replies = [];
   const failures = [];
+  const layoutTrace = [];
+  if (layout) {
+    replies.push(describeLayoutCommand(layout));
+    const verb = { hide: '隐藏', show: '显示', pin: '置顶', reset: '恢复默认布局' }[layout.action];
+    layoutTrace.push({ agent: '🏠 首页 Agent', capability: `${verb}${layout.modules.length ? ` ${layout.modules.map(moduleLabel).join('、')}` : ''}` });
+    // Shown / pinned modules get a fresh card in case none is on the page yet.
+    if (['show', 'pin'].includes(layout.action)) {
+      layout.modules.map(moduleOf).filter(m => m.capabilityId && graph.getEntity(m.capabilityId)?.enabled !== false)
+        .filter(m => !calls.some(c => c.capabilityId === m.capabilityId))
+        .forEach(m => calls.push({ capabilityId: m.capabilityId, args: { ...(m.args || {}) }, auto: true }));
+    }
+  }
   const autoReplies = [];
   const views = [];
-  const trace = [];
+  const trace = [...layoutTrace];
   for (const call of calls) {
     const capability = graph.getEntity(call.capabilityId);
     if (!capability) continue;
@@ -126,7 +150,7 @@ export async function handleUserMessage(text, { graph, history = [] }) {
   const unanswered = !llmContent && !views.length
     && (!trace.length || (failures.length > 0 && failures.length === trace.length));
   return {
-    reply, views, trace, mode,
+    reply, views, trace, mode, layout,
     unanswered: unanswered ? { reason: failures.length ? failures.join('；') : '没有找到能处理这个问题的 Agent 能力', note } : null,
   };
 }
