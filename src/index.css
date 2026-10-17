@@ -843,6 +843,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .home-side { grid-area: side; position: sticky; top: var(--spacing-md); }
 .home-grid.no-profiles { grid-template-columns: minmax(0, 1fr) 380px; grid-template-areas: "main side"; }
 .home-hidden { align-items: center; }
+.home-main > .weather-bar { margin-bottom: 0; }
 
 .profile-panel { height: 360px; display: flex; flex-direction: column; padding: var(--spacing-md); }
 .profile-panel:hover { transform: none; }
@@ -962,7 +963,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .timeline li::before { content: ''; position: absolute; left: -18px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--color-teal); }
 
 /* Chat */
-.chat-panel { display: flex; flex-direction: column; height: calc(100vh - 2 * var(--spacing-md)); min-height: 360px; padding: var(--spacing-md); }
+.chat-panel { display: flex; flex-direction: column; height: calc(100vh - 2 * var(--spacing-md)); height: calc(100dvh - 2 * var(--spacing-md)); max-height: 860px; min-height: 360px; padding: var(--spacing-md); }
 .chat-panel:hover { transform: none; }
 .chat-messages { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--spacing-sm); padding-right: 4px; }
 .chat-row { display: flex; }

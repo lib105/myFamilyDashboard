@@ -1,8 +1,5 @@
 import { routeLocally, parseCapabilityCommand, parseAgentCommand } from './router.js';
-import {
-  parseLayoutCommand, normalizeLayoutCommand, describeLayoutCommand, moduleOf, moduleLabel,
-  arrangeHomeTool, ARRANGE_HOME_TOOL,
-} from './homeLayout.js';
+import { parseLayoutCommand, moduleOf, moduleLabel, arrangeHomeTool, ARRANGE_HOME_TOOL } from './homeLayout.js';
 import { executeCapability, describeFamily } from './capabilities.js';
 import { chatCompletion, isAIConfigured, loadAISettings } from './llmClient.js';
 import { getAgents, getCapabilities, getCapabilityAgent } from '../ontology/queries.js';
@@ -25,6 +22,8 @@ const oneLine = (s, n) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, n
 function toolsFromCapabilities(graph) {
   return getCapabilities(graph, { enabledOnly: true }).map(c => {
     const agent = getCapabilityAgent(graph, c);
+    // The home agent's tool lists the valid module ids in its schema.
+    if (c.id === ARRANGE_HOME_TOOL) return arrangeHomeTool();
     return {
       type: 'function',
       function: {
@@ -61,7 +60,7 @@ async function planWithLLM(text, history, graph, settings) {
     ...history.slice(-8).map(m => ({ role: m.role, content: m.text })),
     { role: 'user', content: text },
   ];
-  const msg = await chatCompletion({ messages, tools: [...toolsFromCapabilities(graph), arrangeHomeTool()], settings });
+  const msg = await chatCompletion({ messages, tools: toolsFromCapabilities(graph), settings });
   const parsed = (msg.tool_calls || []).map(tc => {
     let args = {};
     try {
@@ -71,9 +70,8 @@ async function planWithLLM(text, history, graph, settings) {
     }
     return { capabilityId: tc.function?.name, args };
   });
-  const layoutCall = parsed.find(c => c.capabilityId === ARRANGE_HOME_TOOL);
   const calls = parsed.filter(c => graph.getEntity(c.capabilityId)?.type === 'Capability');
-  return { calls, content: msg.content || '', layout: layoutCall ? normalizeLayoutCommand(layoutCall.args) : null };
+  return { calls, content: msg.content || '' };
 }
 
 /**
@@ -88,15 +86,14 @@ export async function handleUserMessage(text, { graph, history = [] }) {
   let mode = 'local';
   let note = '';
   // Home-page agent: explicit layout commands are handled deterministically in both modes.
-  let layout = parseCapabilityCommand(text) || parseAgentCommand(text, graph) ? null : parseLayoutCommand(text);
-
-  if (layout) calls = [];
-  else if (isAIConfigured(settings)) {
+  const layoutCommand = parseCapabilityCommand(text) || parseAgentCommand(text, graph) ? null : parseLayoutCommand(text);
+  if (layoutCommand && graph.getEntity(ARRANGE_HOME_TOOL)?.enabled !== false) {
+    calls = [{ capabilityId: ARRANGE_HOME_TOOL, args: layoutCommand }];
+  } else if (isAIConfigured(settings)) {
     try {
       const plan = await planWithLLM(text, history, graph, settings);
       calls = plan.calls;
       llmContent = plan.content;
-      layout = plan.layout;
       mode = 'llm';
     } catch (e) {
       note = `⚠️ AI 调用失败，已切换到本地模式：${e.message}`;
@@ -114,30 +111,32 @@ export async function handleUserMessage(text, { graph, history = [] }) {
 
   const replies = [];
   const failures = [];
-  const layoutTrace = [];
-  if (layout) {
-    replies.push(describeLayoutCommand(layout));
-    const verb = { hide: '隐藏', show: '显示', pin: '置顶', reset: '恢复默认布局' }[layout.action];
-    layoutTrace.push({ agent: '🏠 首页 Agent', capability: `${verb}${layout.modules.length ? ` ${layout.modules.map(moduleLabel).join('、')}` : ''}` });
-    // Shown / pinned modules get a fresh card in case none is on the page yet.
-    if (['show', 'pin'].includes(layout.action)) {
-      layout.modules.map(moduleOf).filter(m => m.capabilityId && graph.getEntity(m.capabilityId)?.enabled !== false)
-        .filter(m => !calls.some(c => c.capabilityId === m.capabilityId))
-        .forEach(m => calls.push({ capabilityId: m.capabilityId, args: { ...(m.args || {}) }, auto: true }));
-    }
-  }
+  let layout = null;
   const autoReplies = [];
   const views = [];
-  const trace = [...layoutTrace];
+  const trace = [];
+  // `calls` may grow while iterating: the home agent appends cards for shown / pinned modules.
   for (const call of calls) {
     const capability = graph.getEntity(call.capabilityId);
     if (!capability) continue;
     const agent = getCapabilityAgent(graph, capability);
-    trace.push({ agent: agent ? `${agent.emoji} ${agent.label}` : 'Agent', capability: capability.label, auto: call.auto });
+    const entry = { agent: agent ? `${agent.emoji} ${agent.label}` : 'Agent', capability: capability.label, auto: call.auto };
+    trace.push(entry);
     try {
       const result = await executeCapability(capability, call.args, { graph, text });
       if (result.reply) (call.auto ? autoReplies : replies).push(result.reply);
       views.push(...result.views);
+      if (result.layout && !layout) {
+        layout = result.layout;
+        const verb = { hide: '隐藏', show: '显示', pin: '置顶', reset: '恢复默认布局' }[layout.action];
+        entry.capability = `${verb}${layout.modules.length ? ` ${layout.modules.map(moduleLabel).join('、')}` : ''}`;
+        // Shown / pinned modules get a fresh card in case none is on the page yet.
+        if (['show', 'pin'].includes(layout.action)) {
+          layout.modules.map(moduleOf).filter(m => m.capabilityId && graph.getEntity(m.capabilityId)?.enabled !== false)
+            .filter(m => !calls.some(c => c.capabilityId === m.capabilityId))
+            .forEach(m => calls.push({ capabilityId: m.capabilityId, args: { ...(m.args || {}) }, auto: true }));
+        }
+      }
     } catch (e) {
       failures.push(`「${capability.label}」执行失败：${e.message}`);
       replies.push(`❌ 「${capability.label}」执行失败：${e.message}`);

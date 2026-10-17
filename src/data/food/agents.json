@@ -20,6 +20,10 @@
       "skillMd": "# 技能\n- 查看家庭任务与完成情况、积分排行\n- 新增任务并分配给家庭成员\n- 标记任务完成（打卡）\n- 根据家庭情况给出分工建议",
       "contextMd": "# 家庭任务约定\n- 孩子们每天完成任务可获得积分，积分可兑换周末活动\n- 每周日晚上全家一起复盘本周任务",
       "starters": ["今天有哪些家庭任务", "浇花完成了", "添加任务 给小明 整理书桌 10积分"] },
+    { "id": "agent_home", "label": "首页 Agent", "emoji": "🏠", "description": "负责首页布局：按对话隐藏、显示、置顶首页模块，或恢复默认布局",
+      "agentMd": "# 角色\n你是家庭仪表盘的首页布局管家，让家人最关心的信息出现在最显眼的位置。\n\n# 行为准则\n- 只调整模块的显示、隐藏与顺序，不删除任何数据\n- 置顶的模块会自动显示；隐藏后可随时说“显示xx”恢复\n- 用户要求“恢复默认”时清空所有隐藏与置顶设置",
+      "skillMd": "# 技能\n- 隐藏模块：如“隐藏家庭档案”“不想看天气”\n- 显示模块：如“显示超市比价”\n- 置顶模块：如“把超市打折信息放到最上面”\n- 恢复默认布局：如“恢复默认布局”\n\n# 可管理的模块\n家庭档案、天气、打折信息、超市比价、健康提醒、健康概览、食谱推荐、食材数据、当季食材、家庭任务、旅行计划、采购订单、物流快递、能力清单",
+      "starters": ["隐藏家庭档案", "把超市打折信息放到最上面", "恢复默认布局"] },
     { "id": "agent_system", "label": "系统 Agent", "emoji": "🧠", "description": "通过对话管理 Agent 能力（新增/启用/禁用/删除）" },
     { "id": "agent_custom", "label": "自定义 Agent", "emoji": "🧩", "description": "承载用户通过对话新增的能力" }
   ],
@@ -184,6 +188,13 @@
       "keywords": ["分工", "怎么安排", "任务建议", "习惯养成"],
       "examples": ["周末家务怎么分工"],
       "params": { "type": "object", "properties": { "input": { "type": "string" } }, "required": ["input"] }
+    },
+    {
+      "id": "arrange_home", "label": "调整首页布局", "agentId": "agent_home", "handler": "arrange_home", "priority": 95,
+      "description": "隐藏(hide)/显示(show)/置顶(pin)首页模块，或恢复默认布局(reset)。例如“隐藏家庭档案”“把超市打折信息放到最上面”。",
+      "keywords": [],
+      "examples": ["隐藏家庭档案", "把超市打折信息放到最上面", "恢复默认布局"],
+      "params": { "type": "object", "properties": { "action": { "type": "string", "enum": ["hide", "show", "pin", "reset"] }, "modules": { "type": "array", "items": { "type": "string" } } }, "required": ["action"] }
     },
     {
       "id": "manage_capabilities", "label": "管理 Agent 能力", "agentId": "agent_system", "handler": "manage_capabilities", "priority": 90,
