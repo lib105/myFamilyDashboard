@@ -38,7 +38,7 @@
         "age": { "type": "number" },
         "conditions": { "type": "array", "items": { "type": "string" }, "description": "健康状况/疾病" },
         "allergies": { "type": "array", "items": { "type": "string" }, "description": "过敏原" },
-        "attributes": { "type": "array", "items": { "type": "object", "properties": { "key": { "type": "string" }, "value": { "type": "string" } }, "required": ["key", "value"] }, "description": "其他任意属性" }
+        "attributes": { "type": "array", "items": { "type": "object", "properties": { "key": { "type": "string" }, "value": { "type": "string" } }, "required": ["key", "value"] }, "description": "其他任意属性；饮食类型用 key=饮食类型，value=vegetarian（素食，保留蛋奶）/vegan（纯素）/omnivore（明确恢复杂食），不放入疾病或过敏；否定/疑问不推断限制" }
       }, "required": ["member"] } } }, "required": ["updates"] }
     },
     {

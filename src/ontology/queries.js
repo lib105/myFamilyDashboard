@@ -3,6 +3,8 @@
  * these helpers instead of touching triples directly.
  */
 
+import { normalizeDietAttribute, dietaryTypeFromAttributes } from './diet.js';
+
 export const KINSHIP = {
   爸爸: { avatar: '👨', role: 'parent' }, 妈妈: { avatar: '👩', role: 'parent' },
   爷爷: { avatar: '👴', role: 'elder' }, 奶奶: { avatar: '👵', role: 'elder' },
@@ -16,7 +18,7 @@ export const KINSHIP = {
 };
 
 /** Attribute keys that hold a single value (new value replaces the old one). */
-const SINGLE_VALUE_KEYS = new Set(['身高', '体重', '血压', '血糖', '性别', 'BMI', '运动量']);
+const SINGLE_VALUE_KEYS = new Set(['身高', '体重', '血压', '血糖', '性别', 'BMI', '运动量', '饮食类型']);
 
 const normalize = (s) => String(s || '').trim().toLowerCase();
 
@@ -116,11 +118,12 @@ export function ensureAllergen(graph, text) {
 }
 
 export function setMemberAttribute(graph, memberId, key, value) {
-  const attr = { key: String(key).trim(), value: String(value).trim() };
+  const attr = normalizeDietAttribute(key, value);
   if (!attr.key || !attr.value) return;
+  if (attr.key === '饮食类型' && !dietaryTypeFromAttributes([attr])) return;
   if (SINGLE_VALUE_KEYS.has(attr.key)) {
     graph.objects(memberId, 'hasAttribute')
-      .filter(a => a.key === attr.key)
+      .filter(a => a.key === attr.key || (attr.key === '饮食类型' && dietaryTypeFromAttributes([a])))
       .forEach(a => graph.removeTriple(memberId, 'hasAttribute', a));
   }
   graph.addTriple(memberId, 'hasAttribute', attr);

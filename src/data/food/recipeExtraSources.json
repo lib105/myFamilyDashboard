@@ -1,0 +1,9 @@
+{
+  "food_plant": [
+    "r_pear_soup", "r_broccoli_shiitake", "r_tomato_egg", "r_radish_beef",
+    "r_oat_porridge", "r_spinach_tofu", "r_salmon_broccoli", "r_celery_fungus",
+    "r_pumpkin_millet", "r_chicken_cabbage", "r_lotus_root", "r_shrimp_cucumber"
+  ],
+  "food_fungus": ["r_pear_soup"],
+  "food_dairy": ["r_kiwi_yogurt"]
+}

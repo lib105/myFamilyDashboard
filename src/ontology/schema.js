@@ -14,6 +14,7 @@ export const CLASSES = {
   HealthCondition: { label: '健康状况',   description: '疾病或身体状况，如高血压、糖尿病' },
   Allergen:        { label: '过敏原',     description: '可能引起过敏的物质' },
   Ingredient:      { label: '食材',       description: '水果、蔬菜、肉蛋奶、谷物等' },
+  FoodSource:      { label: '食材来源',   description: '食材的植物、菌类或动物来源；混合食材可关联多个来源' },
   Season:          { label: '季节',       description: '春夏秋冬，用于时令判断' },
   Recipe:          { label: '食谱',       description: '由若干食材组成的简单做法' },
   Store:           { label: '超市/商家',  description: '可购买食材的地点' },
@@ -35,6 +36,8 @@ export const RELATIONS = {
   benefits:         { label: '有益于',       domain: 'Ingredient',   range: 'HealthCondition' },
   cautionFor:       { label: '需慎食于',     domain: 'Ingredient',   range: 'HealthCondition' },
   containsAllergen: { label: '含过敏原',     domain: 'Ingredient',   range: 'Allergen' },
+  derivedFrom:      { label: '来源于',       domain: 'Ingredient',   range: 'FoodSource' },
+  extrasDerivedFrom: { label: '辅料来源于',   domain: 'Recipe',       range: 'FoodSource' },
   availableIn:      { label: '当季于',       domain: 'Ingredient',   range: 'Season' },
   usesIngredient:   { label: '使用食材',     domain: 'Recipe',       range: 'Ingredient' },
   offerOf:          { label: '报价食材',     domain: 'PriceOffer',   range: 'Ingredient' },
@@ -63,6 +66,17 @@ export const INGREDIENT_CATEGORIES = {
   protein:   { label: '肉蛋奶豆', emoji: '🥚' },
   nut:       { label: '坚果', emoji: '🌰' },
 };
+
+export const FOOD_SOURCES = [
+  { id: 'food_plant', label: '植物' },
+  { id: 'food_fungus', label: '菌类' },
+  { id: 'food_meat', label: '畜禽肉及其制品' },
+  { id: 'food_fish', label: '鱼及其制品' },
+  { id: 'food_seafood', label: '其他海鲜及其制品' },
+  { id: 'food_egg', label: '蛋及其制品' },
+  { id: 'food_dairy', label: '乳及其制品' },
+  { id: 'food_animal_other', label: '其他动物来源（如蜂蜜；肉源明胶归入肉类）' },
+];
 
 export function seasonOfMonth(month) {
   return SEASONS.find(s => s.months.includes(month)) || SEASONS[0];

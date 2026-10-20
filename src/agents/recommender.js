@@ -1,7 +1,28 @@
 import { getFamilyProfiles, getIngredients, getIngredientFacts } from '../ontology/queries.js';
-import { seasonOfMonth } from '../ontology/schema.js';
+import { FOOD_SOURCES, seasonOfMonth } from '../ontology/schema.js';
+import { dietaryTypeFromAttributes } from '../ontology/diet.js';
 
 export const currentMonth = () => new Date().getMonth() + 1;
+
+const sourceIds = new Set(FOOD_SOURCES.map(s => s.id));
+const vegetarianSources = new Set(['food_plant', 'food_fungus', 'food_egg', 'food_dairy', 'food_animal_other']);
+const veganSources = new Set(['food_plant', 'food_fungus']);
+
+function dietExclusions(profiles, sources) {
+  return profiles.flatMap(p => {
+    const diet = dietaryTypeFromAttributes(p.attributes);
+    if (!['vegetarian', 'vegan'].includes(diet)) return [];
+    const label = diet === 'vegan' ? '纯素' : '素食';
+    if (!Array.isArray(sources) || !sources.length || sources.some(s => !sourceIds.has(s))) {
+      return [`${p.member.name}采用${label}饮食，来源信息不完整，暂不推荐`];
+    }
+    const allowed = diet === 'vegan' ? veganSources : vegetarianSources;
+    const forbidden = sources.filter(s => !allowed.has(s));
+    return forbidden.length
+      ? [`${p.member.name}采用${label}饮食，排除${forbidden.map(s => FOOD_SOURCES.find(f => f.id === s).label).join('、')}`]
+      : [];
+  });
+}
 
 /**
  * Scores every ingredient for the given family members by walking the
@@ -31,6 +52,11 @@ export function recommendIngredients(graph, { month = currentMonth(), category =
       });
       continue;
     }
+    const dietReasons = dietExclusions(profiles, graph.objects(ingredient.id, 'derivedFrom'));
+    if (dietReasons.length) {
+      excluded.push({ ingredient, reason: dietReasons.join('；') });
+      continue;
+    }
 
     let score = inSeason ? 3 : 0;
     const reasons = [];
@@ -55,17 +81,31 @@ export function recommendIngredients(graph, { month = currentMonth(), category =
   return { month, season: seasonOfMonth(month), items, excluded, profiles };
 }
 
-/** Recommends simple recipes composed of well-scored, allergy-safe ingredients. */
+/** Recommends simple recipes composed of well-scored, allergy- and diet-safe ingredients. */
 export function recommendRecipes(graph, { month = currentMonth(), mealType, memberIds, limit = 4 } = {}) {
-  const { items, excluded } = recommendIngredients(graph, { month, memberIds });
+  const { items, excluded, profiles } = recommendIngredients(graph, { month, memberIds });
   const byId = new Map(items.map(i => [i.ingredient.id, i]));
   const excludedIds = new Set(excluded.map(e => e.ingredient.id));
+  const excludedRecipes = [];
 
   const recipes = graph.findEntities('Recipe')
     .filter(r => !mealType || (r.mealType || '').includes(mealType))
     .map(recipe => {
       const ingredientIds = graph.objects(recipe.id, 'usesIngredient');
-      if (ingredientIds.some(id => excludedIds.has(id))) return null;
+      const reasons = excluded.filter(e => ingredientIds.includes(e.ingredient.id))
+        .map(e => `${e.ingredient.label}：${e.reason}`);
+      if (ingredientIds.some(id => excludedIds.has(id))) {
+        excludedRecipes.push({ recipe, reason: reasons.join('；') });
+        return null;
+      }
+      // Unlinked ingredients and unclassified extras cannot be certified for a restricted diet.
+      const unknown = !ingredientIds.length || ingredientIds.some(id => !byId.has(id));
+      const extraReasons = dietExclusions(profiles, unknown ? undefined
+        : recipe.extras?.length ? graph.objects(recipe.id, 'extrasDerivedFrom') : ['food_plant']);
+      if (extraReasons.length) {
+        excludedRecipes.push({ recipe, reason: extraReasons.join('；') });
+        return null;
+      }
       const scored = ingredientIds.map(id => byId.get(id)).filter(Boolean);
       const score = scored.reduce((s, i) => s + i.score, 0) / Math.max(scored.length, 1)
         + (scored.every(i => i.inSeason) ? 1 : 0);
@@ -75,5 +115,5 @@ export function recommendRecipes(graph, { month = currentMonth(), mealType, memb
     .filter(Boolean)
     .sort((a, b) => b.score - a.score);
 
-  return { recipes: recipes.slice(0, limit), total: recipes.length };
+  return { recipes: recipes.slice(0, limit), total: recipes.length, excluded: excludedRecipes };
 }

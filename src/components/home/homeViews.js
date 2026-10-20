@@ -32,11 +32,15 @@ export const saveViews = (views) => write(VIEWS_KEY, views);
 export const loadMessages = () => read(CHAT_KEY, []);
 export const saveMessages = (messages) => write(CHAT_KEY, messages.slice(-MAX_MESSAGES));
 
-const viewKey = (v) => [
+const viewKey = (v) => ['produce', 'recipes'].includes(v.type) ? JSON.stringify([
+  v.type,
+  [...(v.args?.memberIds || [])].sort(),
+  v.type === 'produce' ? v.args?.category || 'all' : v.args?.mealType || '',
+]) : [
   v.type,
   v.type === 'text' ? v.capabilityId : '',
   v.type === 'order' ? v.args?.orderId : '',
-  ['produce', 'recipes', 'trips', 'health'].includes(v.type) ? JSON.stringify(v.args || {}) : '',
+  ['trips', 'health'].includes(v.type) ? JSON.stringify(v.args || {}) : '',
 ].join(':');
 
 let seq = 0;
@@ -44,8 +48,13 @@ export const stampViews = (views) => views.map(v => ({ ...v, id: `${Date.now().t
 
 /** Newly produced (stamped) views replace views of the same kind and move to the top. */
 export function mergeViews(current, stamped) {
-  const keys = new Set(stamped.map(viewKey));
-  return [...stamped, ...current.filter(v => !keys.has(viewKey(v)))].slice(0, MAX_VIEWS);
+  const keys = new Set();
+  return [...stamped, ...current].filter(v => {
+    const key = viewKey(v);
+    if (keys.has(key)) return false;
+    keys.add(key);
+    return true;
+  }).slice(0, MAX_VIEWS);
 }
 
 const ANSWER_KEY = 'family-dashboard.current-answer.v1';

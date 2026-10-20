@@ -3,7 +3,7 @@ import {
   resolveIngredient, getIngredientFacts, getCapabilities, findCapabilityByName,
   getAgents, getCapabilityAgent, describeFamily, newId,
 } from '../ontology/queries.js';
-import { INGREDIENT_CATEGORIES } from '../ontology/schema.js';
+import { FOOD_SOURCES, INGREDIENT_CATEGORIES } from '../ontology/schema.js';
 import { recommendIngredients, recommendRecipes, currentMonth } from './recommender.js';
 import { chatCompletion, isAIConfigured, parseJsonFromText } from './llmClient.js';
 import { getAgentConfig, buildAgentPrompt, createCustomCapability } from './agentConfig.js';
@@ -106,6 +106,7 @@ function updateMemberProfile(args, { graph }) {
   return {
     reply: `🩺 已更新家庭健康档案：\n${lines.join('\n')}${advice.length ? `\n\n饮食建议：\n${[...new Set(advice)].join('\n')}` : ''}`,
     views: [{ type: 'profile', title: '家庭健康档案' }],
+    profileUpdated: true,
   };
 }
 
@@ -138,12 +139,13 @@ function recommendRecipesHandler(args, { graph }) {
   const mealType = asText(args.mealType) || undefined;
   const memberIds = memberIdsFromArg(graph, args.member);
   const { recipes } = recommendRecipes(graph, { mealType, memberIds });
+  const view = { type: 'recipes', title: `${mealType || ''}简单食谱推荐`, args: { mealType, memberIds } };
   if (!recipes.length) {
-    return { reply: `暂时没有找到适合的${mealType || ''}食谱，可以换个餐次试试～`, views: [] };
+    return { reply: `暂时没有找到适合的${mealType || ''}食谱，可以换个餐次试试～`, views: [view] };
   }
   return {
     reply: `🍳 推荐${mealType ? `${mealType}` : ''}简单食谱：\n${recipes.map(r => `${r.recipe.emoji} ${r.recipe.label}（${r.recipe.minutes}分钟）`).join('\n')}`,
-    views: [{ type: 'recipes', title: `${mealType || ''}简单食谱推荐`, args: { mealType, memberIds } }],
+    views: [view],
   };
 }
 
@@ -187,7 +189,7 @@ async function collectIngredientWithLLM(graph, name) {
   const msg = await chatCompletion({
     messages: [
       { role: 'system', content: '你是食材营养数据采集助手，只输出 JSON。' },
-      { role: 'user', content: `请输出食材「${name}」的数据，JSON 字段：label, emoji, category(fruit|vegetable|mushroom|grain|protein|nut), months(1-12 当季月份数组), nutrients(字符串数组), benefits(有益的健康状况 id 数组), cautions(需慎食的健康状况 id 数组), allergens(过敏原 id 数组), note。可用健康状况：${conditions}。可用过敏原：${allergens}。` },
+      { role: 'user', content: `请输出食材「${name}」的数据，JSON 字段：label, emoji, category(fruit|vegetable|mushroom|grain|protein|nut), months(1-12 当季月份数组), nutrients(字符串数组), benefits(有益的健康状况 id 数组), cautions(需慎食的健康状况 id 数组), allergens(过敏原 id 数组), foodSources(全部来源 id 数组，混合食材必须列全，不能确定则返回空数组), note。食材来源：${FOOD_SOURCES.map(s => `${s.id}=${s.label}`).join(', ')}；鱼露/肉汤等归鱼/肉来源，不可因属于 protein 类别而判断荤素。可用健康状况：${conditions}。可用过敏原：${allergens}。` },
     ],
   });
   const data = parseJsonFromText(msg.content);
@@ -209,6 +211,10 @@ async function collectIngredientWithLLM(graph, name) {
     if (graph.getEntity(id)?.type === type) graph.addTriple(entity.id, rel, id);
   });
   graph.batch(() => {
+    const sources = data.foodSources;
+    if (Array.isArray(sources) && sources.length && sources.every(id => FOOD_SOURCES.some(s => s.id === id))) {
+      link('derivedFrom', sources, 'FoodSource');
+    }
     link('benefits', data.benefits, 'HealthCondition');
     link('cautionFor', data.cautions, 'HealthCondition');
     link('containsAllergen', data.allergens, 'Allergen');
@@ -395,6 +401,6 @@ export async function executeCapability(capability, args, ctx) {
     reply: result.reply,
     views: (result.views || []).map(v => ({ ...v, capabilityId: capability.id })),
     ...(result.layout ? { layout: result.layout } : {}),
+    ...(result.profileUpdated ? { profileUpdated: true } : {}),
   };
 }
-
