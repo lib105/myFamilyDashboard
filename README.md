@@ -1,103 +1,176 @@
 # 🏡 家庭仪表盘 · Family Dashboard
 
-A colorful, kid-friendly family dashboard. The **family home page** is an ontology-driven AI assistant: food, health,
-task and travel Agents work together, and an AI chat dynamically invokes Agent capabilities to update the home page.
-Every Agent can be configured (Agent.md / Skill.md / Context.md, tools, knowledge files & URLs, starter prompts).
-
-## 🏡 AI 家庭首页（Ontology + AI Agents）
-
-- **当季优先推荐**：结合当前月份/季节与家人健康档案，推荐食材、水果、蔬菜及简单食谱，自动避开过敏原、标注慎食人群。
-- **对话式健康档案**：随时在对话里补充家人信息，属性不限（如“奶奶72岁，血糖偏高，对花生过敏，最近睡眠不好，血压：150/95”）。
-  未知的健康状况/过敏原会作为新概念自动扩展进本体。
-- **AI Key 可配置**（`/settings`）：支持 OpenAI 兼容接口（OpenAI、DeepSeek、通义千问、Kimi 或自定义）。
-  未配置时使用本地规则路由；配置后由大模型通过 function calling 选择能力，失败自动回退本地模式。
-  Key 默认只保存在 sessionStorage（关闭浏览器即清除），用户勾选“记住 Key”才会写入 localStorage；仅允许 https（本机调试可用 http://localhost）；正式上线建议走后端代理。
-- **旅行 / 健康 / 任务 Agent**：
-  - ✈️ 旅行 Agent：`我们有哪些旅行计划`、`大阪行前清单还差什么`（可勾选清单）、`三亚亲子游有什么建议`
-  - 💗 健康 Agent：`全家健康状况怎么样`、`今天有哪些健康提醒`、`提醒爸爸每晚9点测血压`
-  - ✅ 任务 Agent：`今天有哪些家庭任务`、`添加任务 给小明 整理书桌 10积分`、`浇花完成了`（自动累计积分）
-- **Agent 配置**（`/agents` → ⚙️ 配置，参考 Microsoft Copilot Agent 配置项）：
-  - 基本信息：名称、图标、描述；可「＋ 新建 Agent」，用户创建的 Agent 可删除，内置 Agent 可「恢复默认」
-  - `Agent.md`（指令）、`Skill.md`（技能）、`Context.md`（上下文）：Markdown 编辑，支持导入/导出 .md 文件
-  - 工具：启用/禁用该 Agent 的能力，新增「固定回复」或「AI 提示词」型工具（即时生效）
-  - 知识：上传文件（.md/.txt/.json/.csv/.html 等文本格式会被解析，PDF/Word/图片仅记录文件信息）、添加网址
-    （浏览器可抓取时解析正文，受跨域限制时作为参考网址提供给 AI），可选「仅基于指定知识回答」
-  - 开场提示：显示在家庭首页对话建议中；右侧「🧪 试一试」可用未保存的配置测试，并预览系统提示词
-  - 配置用于 AI 路由提示词、各 Agent 的咨询工具及自定义 AI 工具；未配置 AI Key 时，咨询工具会在 Context.md 与知识中做本地检索
-- **Agent 能力可扩展**（`/agents`）：内置健康档案、营养推荐、食材数据采集、超市比价、其他 App 打折、模拟下单、物流查询、旅行、健康、任务等能力；
-  可在对话中管理能力，例如：
-  - `你能做什么`
-  - `添加能力 名称:社区团购查询 关键词:团购,拼团 回复:今晚8点社区团购截单`（模拟数据型）
-  - `添加能力 名称:营养师点评 关键词:点评 提示词:请点评{input}，家庭情况：{family} Agent:营养师`（AI 型，会新建 Agent）
-  - `禁用能力 社区团购查询` / `启用能力 …` / `删除能力 …`
-- **意图驱动的动态首页**：每次能力调用都会生成/刷新首页卡片（推荐、食谱、比价、优惠、订单、物流、旅行、任务、健康提醒……），对话中显示调用链路。
-- **首页布局**：顶部为紧凑天气栏（[Open-Meteo](https://open-meteo.com/) 免 Key 接口，可切换城市或使用当前位置，失败时只显示日期与季节）；
-  左侧为固定大小的家庭档案（内部滚动）；页面中间「🎯 当前回答」显示当前问题的完整回答及本次生成的卡片，其他卡片排在下方；
-  右侧对话框只显示回答摘要（点击「完整结果见页面中间」可回看），输入框始终固定在可视区域内（窄屏时固定在屏幕底部）；
-  遇到无法回答的问题会在屏幕中间弹出提示层，并给出可尝试的问法。
-
-### 本体设计
-
-| 层 | 内容 |
-|----|------|
-| Schema（`src/ontology/schema.js`） | 类：家庭成员、健康状况、过敏原、食材、季节、食谱、超市、价格报价、优惠活动、订单、物流单、旅行计划、家庭任务、健康提醒、Agent、能力；关系：`hasCondition`、`allergicTo`、`hasAttribute`（开放属性）、`benefits`、`cautionFor`、`containsAllergen`、`availableIn`、`usesIngredient`、`offerOf`、`soldAt`、`promotes`、`orderedFrom`、`orderContains`、`shipmentOf`、`assignedTo`（任务→成员）、`reminderFor`（健康提醒→成员）、`providedBy` |
-| 知识图谱（`src/ontology/graph.js`） | 按 Schema 校验的三元组存储；`base` 层来自本地模拟数据，`user` 层由对话产生并持久化到 localStorage |
-| 设计约束 | 实体之间的联系一律用关系（三元组）表达，不在属性里冗余保存名称或 id：任务/健康提醒通过 `assignedTo`/`reminderFor` 指向家庭成员（无关系即“全家”），能力只通过 `providedBy` 归属 Agent；旅行清单、心愿等嵌套值对象只保存成员实体 id，显示时从图谱解析姓名。删除成员会级联移除相关关系；旧版本持久化的名称引用在启动时自动迁移（`migrateLegacyKnowledge`） |
-| Agent（`src/agents/`） | `router.js` 本地意图路由，`profileExtractor.js` 档案抽取，`orchestrator.js` 规划与执行（本地或 LLM），`capabilities.js` 能力实现，`familyAgents.js` 旅行/健康/任务能力，`agentConfig.js` Agent 配置与知识库，`recommender.js` 基于图谱推理的推荐 |
+一个以 **本体（Ontology）为核心** 的家庭 AI 助手。家人、健康状况、食材、食谱、订单、旅行、任务，乃至 **Agent 与它们的能力**，
+全部是同一张知识图谱里的类型化实体，通过受 Schema 约束的关系（三元组）相连。AI 对话只负责“理解意图 → 选择能力”，
+真正的数据、推理与扩展都落在本体上。
 
 > 健康饮食建议仅供参考，不能替代医生或营养师的专业意见。
 
-## ✨ Modules
+---
 
-| Module | Description |
-|--------|-------------|
-| 🏡 **Family Home** (`/`) | Food & recipe recommendations, health profiles, tasks, health reminders, trips, AI chat |
-| 🧠 **Agent Center** (`/agents`) | Agents & capabilities, per-agent configuration (Agent.md / Skill.md / Context.md, tools, knowledge files & URLs, starter prompts), ontology explorer |
-| ⚙️ **AI Settings** (`/settings`) | Configure your own AI key / endpoint / model, reset demo data |
-| 👤 **Login** | WeChat QR login placeholder (swappable for real OAuth) |
+## 🏛️ 架构亮点
 
-## 🚀 Getting Started
+### 1. 本体驱动：一套模型统一所有领域
+
+```mermaid
+flowchart LR
+  U[👤 用户对话] --> O[orchestrator<br/>规划与执行]
+  O -->|已配置 AI Key| L[LLM function calling]
+  O -->|未配置 / 失败回退| R[本地规则路由]
+  L --> C[Capability 实体]
+  R --> C
+  C -->|providedBy| A[Agent 实体]
+  C -->|handler| KG[(知识图谱<br/>TBox + ABox)]
+  KG --> REC[图谱推理<br/>推荐 / 查询]
+  REC --> V[动态首页卡片]
+  KG -. useSyncExternalStore .-> UI[React 视图]
+```
+
+| 层 | 文件 | 职责 |
+|----|------|------|
+| **TBox（Schema）** | `src/ontology/schema.js` | 声明 16 个类与 17 种关系，每种关系都带 `domain → range` 类型约束 |
+| **ABox（知识图谱）** | `src/ontology/graph.js` | 轻量内存三元组存储，写入时按 Schema 校验；支持批量事务、订阅、分层持久化 |
+| **种子与迁移** | `src/ontology/seed.js` | 把本地 JSON 模拟数据转换为实体 + 三元组；迁移旧版本数据 |
+| **领域查询** | `src/ontology/queries.js` | 成员档案、同义词解析、概念扩展等领域 API，Agent 不直接操作三元组 |
+| **Agent 层** | `src/agents/` | 路由、档案抽取、编排、能力实现、图谱推荐、LLM 客户端 |
+| **视图层** | `src/components/` | 通过 `useGraph()` 订阅图谱版本号，图谱变化即刷新 UI |
+
+### 2. Schema 即契约：写入时强校验
+
+`KnowledgeGraph.addTriple(s, p, o)` 会依次检查：关系是否在 Schema 中定义、主语/宾语实体是否存在、
+类型是否满足 `domain`/`range`、字面量关系的宾语是否为对象。任何不符合本体的数据都无法进入图谱；
+从 localStorage 恢复时，已不满足当前 Schema 的旧三元组会被自动跳过。
+
+```
+FamilyMember ─hasCondition→ HealthCondition      Ingredient ─benefits / cautionFor→ HealthCondition
+FamilyMember ─allergicTo──→ Allergen              Ingredient ─containsAllergen→ Allergen
+FamilyMember ─hasAttribute→ Literal(开放属性)     Ingredient ─availableIn→ Season
+Recipe ─usesIngredient→ Ingredient                PriceOffer ─offerOf→ Ingredient / ─soldAt→ Store
+Promotion ─promotes→ Ingredient                   Order ─orderedFrom→ Store / ─orderContains→ Ingredient
+Shipment ─shipmentOf→ Order                       Task ─assignedTo→ FamilyMember
+HealthReminder ─reminderFor→ FamilyMember         Capability ─providedBy→ Agent
+```
+
+### 3. 关系优先，不在属性里冗余引用
+
+实体之间的联系 **一律用关系（三元组）表达**，不在属性里保存名称或 id：
+
+- 任务 / 健康提醒通过 `assignedTo` / `reminderFor` 指向家庭成员，无关系即表示“全家”；
+- 能力只通过 `providedBy` 归属 Agent；
+- 旅行清单、心愿等嵌套值对象只保存成员实体 id，显示时从图谱解析姓名。
+
+好处：改名无需同步、删除成员会级联移除相关三元组、不会出现悬空引用。旧版本持久化的名称引用
+在启动时由 `migrateLegacyKnowledge` 自动迁移为关系。
+
+### 4. 双层知识：内置知识与用户知识分离
+
+- **`base` 层**：由 `src/data/**/*.json` 种子生成，不持久化、不可删除（只能禁用）；
+- **`user` 层**：对话中产生的家人、档案、任务、自定义能力等，持久化到 localStorage；
+- **overrides**：对内置实体的修改（如禁用某个内置能力、编辑内置 Agent 配置）以补丁形式持久化。
+
+因此升级内置数据不会覆盖用户知识，“恢复默认”也只需丢弃 user 层与补丁后重新种子。
+
+### 5. 开放世界：对话即可扩展本体
+
+- **开放属性**：`hasAttribute` 的宾语是字面量 `{ key, value }`，家人属性不受预设字段限制（如“血压：150/95”“最近睡眠不好”）；
+- **概念自动扩展**：抽取到未知的健康状况/过敏原时，`ensureCondition` / `ensureAllergen` 会把它作为新实体加入本体；
+- **同义词解析**：`HealthCondition` / `Allergen` / `Ingredient` 都带 `synonyms`，自然语言通过本体词表映射到实体。
+
+### 6. Agent 与能力本身也是本体实体
+
+`Agent` 和 `Capability` 是本体中的类，二者通过 `providedBy` 关联。这带来几个直接效果：
+
+- **运行时扩展**：新增能力 = 新增一个 `Capability` 实体 + 一条 `providedBy` 三元组，无需改代码、即时生效；
+- **工具自动生成**：LLM 的 function calling 工具列表直接由已启用的 `Capability` 实体生成（名称、描述、JSON Schema 参数）；
+- **本体注入提示词**：系统提示词会自动列出本体类与 `domain-关系->range`，让大模型理解领域模型；
+- **本地路由同源**：未配置 AI Key 时，本地路由同样基于 `Capability` 实体上的关键词与优先级打分。
+
+### 7. 基于图谱推理的推荐
+
+`recommender.js` 不是写死的规则表，而是沿着图谱路径推理：
+
+```
+Member ─hasCondition→ Condition ←benefits / cautionFor─ Ingredient   （加分 / 减分并给出理由）
+Member ─allergicTo──→ Allergen  ←containsAllergen──── Ingredient   （直接排除并说明原因）
+Ingredient ─availableIn→ Season（当前月份）                           （当季优先）
+Recipe ─usesIngredient→ Ingredient                                    （食谱评分 = 食材评分聚合）
+```
+
+每条推荐都能回溯到具体的成员与关系，可解释性天然具备。新增一种健康状况或食材，只需补充实体与关系，推理逻辑无需改动。
+
+### 8. LLM 可插拔，本地优先
+
+- 配置 OpenAI 兼容接口（OpenAI、DeepSeek、通义千问、Kimi 或自定义）后，由大模型通过 function calling 选择能力；
+- 未配置或调用失败时自动回退到本地规则路由，核心功能离线可用；
+- LLM 返回的工具调用会再次校验必须是图谱中存在的 `Capability` 实体，防止越权调用；
+- Key 默认只保存在 sessionStorage，勾选“记住 Key”才写入 localStorage；仅允许 https（本机调试可用 http://localhost），正式上线建议走后端代理。
+
+---
+
+## ✨ 功能概览
+
+| 模块 | 说明 |
+|------|------|
+| 🏡 **家庭首页**（`/`） | AI 对话 + 意图驱动的动态卡片：当季食材与食谱推荐、健康档案、任务、健康提醒、旅行、比价、优惠、订单、物流；顶部天气栏（[Open-Meteo](https://open-meteo.com/)） |
+| 🧠 **Agent 中心**（`/agents`） | Agent 与能力管理；按 Agent 配置 `Agent.md` / `Skill.md` / `Context.md`、工具、知识文件与网址、开场提示；🕸️ 本体浏览器（类、关系、三元组） |
+| ⚙️ **AI 设置**（`/settings`） | 配置 AI Key / 接口地址 / 模型，重置演示数据 |
+| 👤 **登录** | 微信扫码登录占位（可替换为真实 OAuth） |
+
+内置 Agent：健康档案 🩺、营养推荐 🥗、食材数据 📚、采购 🛒、物流 🚚、旅行 ✈️、健康 💗、任务 ✅、首页 🏠、系统 🧠、自定义 🧩。
+
+对话示例：
+
+- `奶奶72岁，血糖偏高，对花生过敏，最近睡眠不好，血压：150/95` —— 记录档案（未知概念自动扩展进本体）
+- `推荐点当季水果` / `今晚做什么菜` —— 图谱推理推荐
+- `大阪行前清单还差什么` / `提醒爸爸每晚9点测血压` / `添加任务 给小明 整理书桌 10积分`
+- `隐藏家庭档案` / `把超市打折信息放到最上面` / `恢复默认布局` —— 首页 Agent 调整布局
+- `添加能力 名称:社区团购查询 关键词:团购,拼团 回复:今晚8点社区团购截单` —— 对话中新增能力
+
+## 🚀 快速开始
 
 ```bash
 npm install
-npm run dev       # development server
-npm run build     # production build
-npm run preview   # preview production build
+npm run dev       # 开发服务器
+npm run lint      # ESLint
+npm run build     # 生产构建
+npm run preview   # 预览生产构建
 ```
 
-## 🗂️ Project Structure
+## 🗂️ 项目结构
 
 ```
 src/
-├── data/              # Local mock JSON data (members, trips, tasks, health reminders)
-│   └── food/          # Ingredients, recipes, conditions, allergens, prices, app discounts, logistics, agents/capabilities
-├── ontology/          # Ontology schema, knowledge graph, seeding, domain queries
-├── agents/            # Intent router, profile extractor, orchestrator, capabilities, recommender, LLM client
+├── ontology/          # 本体核心
+│   ├── schema.js      #   TBox：类、关系（domain/range）、季节
+│   ├── graph.js       #   ABox：带 Schema 校验的三元组知识图谱（分层、事务、订阅、持久化）
+│   ├── seed.js        #   JSON → 实体/三元组；旧数据迁移
+│   ├── queries.js     #   领域查询与变更 API（成员档案、同义词解析、概念扩展）
+│   └── index.js       #   图谱单例与 useGraph() Hook
+├── agents/            # 意图路由、档案抽取、编排、能力实现、图谱推荐、Agent 配置、首页布局、LLM 客户端
+├── data/              # 本地模拟数据（成员、旅行、任务、健康提醒）
+│   └── food/          # 食材、食谱、健康状况、过敏原、价格、优惠、物流、Agent/能力定义
 ├── components/
-│   ├── home/          # AI family home: chat, family profiles, dynamic view cards
-│   ├── agents/        # Agent center, agent configuration editor, ontology explorer
-│   ├── settings/      # AI key settings
-│   ├── layout/        # App shell: sidebar navigation
-│   └── auth/          # Login (WeChat QR placeholder)
-├── App.jsx            # Router configuration
-└── main.jsx           # Entry point
+│   ├── home/          # AI 家庭首页：对话、家庭档案、动态卡片、天气栏
+│   ├── agents/        # Agent 中心、Agent 配置编辑器、本体浏览器
+│   ├── settings/      # AI Key 设置
+│   ├── layout/        # 应用外壳与侧边导航
+│   └── auth/          # 登录（微信扫码占位）
+├── App.jsx            # 路由
+└── main.jsx           # 入口
 ```
 
-## 📋 Mock Data Files
+## 📋 模拟数据
 
-- `src/data/members.json` — Family members (parents + kids with points)
-- `src/data/trips.json` — Trip plans with checklists, assignments, wishes (travel agent)
-- `src/data/tasks.json` — Recurring tasks with points (task agent)
-- `src/data/healthReminders.json` — Medication / check-up / vaccine reminders (health agent)
-- `src/data/food/ingredients.json` — Ingredients with seasonal months, nutrients, benefit/caution conditions, allergens
-- `src/data/food/recipes.json` — Simple recipes linked to ingredients
-- `src/data/food/conditions.json` / `allergens.json` — Health condition & allergen vocabularies (with synonyms)
-- `src/data/food/supermarketPrices.json` / `appDiscounts.json` / `logistics.json` — Simulated stores, prices, app deals, deliveries
-- `src/data/food/agents.json` — Built-in agents (incl. default Agent.md / Skill.md / Context.md / starter prompts) and capability definitions (keywords + JSON-schema params)
+- `src/data/members.json` / `trips.json` / `tasks.json` / `healthReminders.json` — 成员、旅行、任务、健康提醒（成员引用在种子时转换为关系）
+- `src/data/food/ingredients.json` — 食材（时令月份、营养、有益/慎食状况、过敏原 → 转换为 `availableIn` / `benefits` / `cautionFor` / `containsAllergen`）
+- `src/data/food/recipes.json` — 食谱（→ `usesIngredient`）
+- `src/data/food/conditions.json` / `allergens.json` — 健康状况与过敏原词表（含同义词）
+- `src/data/food/supermarketPrices.json` / `appDiscounts.json` / `logistics.json` — 超市报价、App 优惠、物流
+- `src/data/food/agents.json` — 内置 Agent（含默认 Agent.md / Skill.md / Context.md / 开场提示）与能力定义（关键词 + JSON Schema 参数）
 
-## 🔮 Future Roadmap
+## 🔮 Roadmap
 
-- Real WeChat QR OAuth login (swap `Login.jsx` → `WeChatQRSection`)
-- Server-side parsing of PDF / Word knowledge files and crawling of knowledge URLs
-- Backend / database integration
-- Full family member role permissions
+- 真实微信扫码 OAuth 登录（`Login.jsx` → `WeChatQRSection`）
+- 服务端解析 PDF / Word 知识文件、抓取知识网址
+- 后端 / 数据库集成（知识图谱持久化到服务端）
+- 家庭成员角色权限
