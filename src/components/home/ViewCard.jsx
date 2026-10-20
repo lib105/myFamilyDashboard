@@ -5,6 +5,7 @@ import { getIngredientFacts, getFamilyProfiles, getAgents, getCapabilities } fro
 import { recommendIngredients, recommendRecipes } from '../../agents/recommender.js';
 import { confirmOrder, cancelOrder } from '../../agents/capabilities.js';
 import { TripsView, TasksView, HealthView, RemindersView } from './FamilyViews.jsx';
+import Markdown from '../common/Markdown.jsx';
 
 const VIEW_META = {
   produce:         { emoji: '🥗', color: '#27AE60' },
@@ -320,7 +321,7 @@ function CapabilitiesView() {
 }
 
 function TextView({ view }) {
-  return <div style={{ whiteSpace: 'pre-wrap' }} className="text-sm">{view.data?.text}</div>;
+  return <Markdown className="text-sm" text={view.data?.text} />;
 }
 
 const RENDERERS = {

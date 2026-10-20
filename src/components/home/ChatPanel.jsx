@@ -6,6 +6,7 @@ import { isAIConfigured, loadAISettings } from '../../agents/llmClient.js';
 import { loadMessages, saveMessages } from './homeViews.js';
 import { getAgents } from '../../ontology/queries.js';
 import { getAgentConfig } from '../../agents/agentConfig.js';
+import Markdown from '../common/Markdown.jsx';
 
 const BASE_SUGGESTIONS = [
   '奶奶72岁，血糖偏高，对花生过敏',
@@ -80,7 +81,9 @@ export default function ChatPanel({ draft, setDraft, onResult, onFocusAnswer, in
         {messages.map((m, i) => (
           <div key={i} className={`chat-row ${m.role}`}>
             <div className={`chat-bubble ${m.role}${m.answer ? ' summary' : ''}${m.unanswered ? ' unanswered' : ''}`}>
-              <div className={m.answer ? 'chat-clamp' : undefined}>{m.text}</div>
+              <div className={m.answer ? 'chat-clamp' : undefined}>
+                {m.role === 'assistant' ? <Markdown text={m.text} /> : m.text}
+              </div>
               {m.answer && (
                 <button type="button" className="chat-focus" onClick={() => onFocusAnswer(m.answer)} title="在页面中间查看完整结果">
                   👈 完整结果见页面中间

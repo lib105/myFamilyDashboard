@@ -5,6 +5,7 @@ import ChatPanel from './ChatPanel.jsx';
 import ViewCard from './ViewCard.jsx';
 import WeatherBar from './WeatherBar.jsx';
 import UnansweredDialog from './UnansweredDialog.jsx';
+import Markdown from '../common/Markdown.jsx';
 import {
   DEFAULT_VIEWS, loadViews, saveViews, mergeViews, stampViews, loadAnswer, saveAnswer, loadLayout, saveLayout,
 } from './homeViews.js';
@@ -23,7 +24,7 @@ function AnswerStage({ answer, views, freshIds, onClose, onCloseView }) {
       </div>
       <div className="answer-question">🙋 {answer.question}</div>
       {/* Agent template cards already present the answer; plain text is only a fallback. */}
-      {answer.reply && !shown.length && <div className="answer-reply">{answer.reply}</div>}
+      {answer.reply && !shown.length && <Markdown className="answer-reply" text={answer.reply} />}
       {answer.trace?.length > 0 && (
         <div className="chat-trace mb-sm">
           {answer.trace.map((t, j) => (
