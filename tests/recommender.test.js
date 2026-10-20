@@ -63,6 +63,21 @@ test('vegan excludes eggs, dairy, honey, and mixed animal-source ingredients', (
   }
 });
 
+test('legacy broad meat avoidance filters sources independently without downgrading vegan', () => {
+  const graph = fixture();
+  setMemberAttribute(graph, 'dad', '饮食禁忌', '不吃肉');
+  const result = recommendIngredients(graph);
+  assert.ok(!ingredientIds(result).includes('ing_beef'));
+  assert.ok(ingredientIds(result).includes('ing_salmon'));
+  assert.ok(ingredientIds(result).includes('ing_egg'));
+  assert.match(result.excluded.find(e => e.ingredient.id === 'ing_beef').reason, /爸爸.*饮食禁忌/);
+  setMemberAttribute(graph, 'dad', '饮食禁忌', '不吃荤');
+  assert.ok(!ingredientIds(recommendIngredients(graph)).includes('ing_salmon'));
+  setMemberAttribute(graph, 'dad', '饮食类型', 'vegan');
+  assert.ok(!ingredientIds(recommendIngredients(graph)).includes('ing_egg'));
+  assert.ok(!recipeIds(recommendRecipes(graph, { limit: 100 })).includes('r_kiwi_yogurt'));
+});
+
 test('member-specific recommendations isolate constraints; shared meals combine targets', () => {
   const graph = fixture('vegetarian');
   setMemberAttribute(graph, 'mom', '饮食类型', 'vegan');

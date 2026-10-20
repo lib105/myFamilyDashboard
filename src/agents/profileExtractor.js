@@ -67,7 +67,10 @@ function extractFacts(segment, graph) {
 
   // 4) Diet preferences
   work = work.replace(/[^，。,；;！!？?\n]+[？?]?/g, clause => {
-    if (!/(素食|吃素|纯素|杂食|荤|肉|vegetarian|vegan|omnivore)/i.test(clause)) return clause;
+    if (/(?:并不是|不是|并非|没有|并没有)\s*(?:不吃|不能吃|忌口|忌)/.test(clause)) {
+      return ' '.repeat(clause.length);
+    }
+    if (!/(素食|吃素|纯素|蛋奶素|杂食|荤|肉|vegetarian|vegan|omnivore)/i.test(clause)) return clause;
     if (/[？?]|吗|么|是否|是不是|能否|要不要|如何|怎么/.test(clause)) return ' '.repeat(clause.length);
     const value = clause.trim().replace(/^的\s*/, '');
     const attr = normalizeDietAttribute('饮食偏好', value);
@@ -77,7 +80,7 @@ function extractFacts(segment, graph) {
     }
     // Do not let the generic "不吃…" rule turn a negated vegan statement or
     // a mere dislike of vegetarian food into a dietary type.
-    if (/^(?:现在|目前|已经)?(?:不是|不再是|不喜欢|不爱|不想|不一定|并非|非)/.test(value)) {
+    if (/^(?:现在|目前|已经)?(?:并不是|不是|不再是|不喜欢|不爱|不想|不一定|并非|没有|非)/.test(value)) {
       return ' '.repeat(clause.length);
     }
     return clause;

@@ -7,19 +7,26 @@ export const currentMonth = () => new Date().getMonth() + 1;
 const sourceIds = new Set(FOOD_SOURCES.map(s => s.id));
 const vegetarianSources = new Set(['food_plant', 'food_fungus', 'food_egg', 'food_dairy', 'food_animal_other']);
 const veganSources = new Set(['food_plant', 'food_fungus']);
+const avoidedSources = new Map([
+  ...['不吃肉', '不吃肉类', '不能吃肉', '忌肉'].map(v => [v, ['food_meat']]),
+  ...['不吃荤', '不吃荤食', '忌荤'].map(v => [v, ['food_meat', 'food_fish', 'food_seafood']]),
+]);
 
 function dietExclusions(profiles, sources) {
   return profiles.flatMap(p => {
     const diet = dietaryTypeFromAttributes(p.attributes);
-    if (!['vegetarian', 'vegan'].includes(diet)) return [];
-    const label = diet === 'vegan' ? '纯素' : '素食';
+    const avoided = new Set(p.attributes.filter(a => ['饮食禁忌', '饮食偏好'].includes(a.key))
+      .flatMap(a => avoidedSources.get(typeof a.value === 'string' ? a.value.trim() : '') || []));
+    const restricted = ['vegetarian', 'vegan'].includes(diet);
+    if (!restricted && !avoided.size) return [];
+    const label = restricted ? `采用${diet === 'vegan' ? '纯素' : '素食'}饮食` : '有饮食禁忌';
     if (!Array.isArray(sources) || !sources.length || sources.some(s => !sourceIds.has(s))) {
-      return [`${p.member.name}采用${label}饮食，来源信息不完整，暂不推荐`];
+      return [`${p.member.name}${label}，来源信息不完整，暂不推荐`];
     }
-    const allowed = diet === 'vegan' ? veganSources : vegetarianSources;
-    const forbidden = sources.filter(s => !allowed.has(s));
+    const allowed = diet === 'vegan' ? veganSources : diet === 'vegetarian' ? vegetarianSources : sourceIds;
+    const forbidden = sources.filter(s => !allowed.has(s) || avoided.has(s));
     return forbidden.length
-      ? [`${p.member.name}采用${label}饮食，排除${forbidden.map(s => FOOD_SOURCES.find(f => f.id === s).label).join('、')}`]
+      ? [`${p.member.name}${label}，排除${forbidden.map(s => FOOD_SOURCES.find(f => f.id === s).label).join('、')}`]
       : [];
   });
 }

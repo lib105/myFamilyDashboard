@@ -56,15 +56,16 @@ test('recipe extras have explicit audited base source relations', () => {
 test('normalization accepts exact dietary declarations, not food avoidance or guesses', () => {
   for (const [value, expected] of [
     ['素食主义者', 'vegetarian'], ['是素食主义者', 'vegetarian'], ['吃素', 'vegetarian'],
-    ['不吃荤', 'vegetarian'], ['不吃荤食', 'vegetarian'], ['忌荤', 'vegetarian'],
-    ['不吃肉类', 'vegetarian'], ['不吃肉', 'vegetarian'],
     ['纯素', 'vegan'], ['纯素食主义者', 'vegan'], ['VEGAN', 'vegan'],
     ['不吃素', 'omnivore'], ['不再吃素', 'omnivore'], ['不是素食主义者', 'omnivore'],
     ['荤素都吃', 'omnivore'],
   ]) {
     assert.deepEqual(normalizeDietAttribute('饮食偏好', value), { key: '饮食类型', value: expected });
   }
-  for (const value of ['不吃牛肉', '不吃猪肉', '不吃鸡肉', '不吃海鲜', '喜欢吃素', '不喜欢吃素', '不是纯素', '素食主义者吗', '不一定吃素']) {
+  for (const value of [
+    '不吃肉', '不吃肉类', '不吃荤', '不吃荤食', '忌荤', '不吃牛肉', '不吃猪肉',
+    '不吃鸡肉', '不吃海鲜', '喜欢吃素', '不喜欢吃素', '不是纯素', '素食主义者吗', '不一定吃素',
+  ]) {
     assert.deepEqual(normalizeDietAttribute('饮食禁忌', value), { key: '饮食禁忌', value });
     assert.equal(dietaryTypeFromAttributes([{ key: '饮食禁忌', value }]), undefined);
   }
@@ -84,7 +85,7 @@ test('canonical values take precedence over stale legacy restrictions', () => {
 test('local extraction handles declarations and explicit unrestricted changes', () => {
   const { graph } = setup();
   for (const [text, expected] of [
-    ['爸爸是素食主义者', 'vegetarian'], ['爸爸吃素', 'vegetarian'],
+    ['爸爸是素食主义者', 'vegetarian'], ['爸爸吃素', 'vegetarian'], ['爸爸是蛋奶素', 'vegetarian'],
     ['爸爸纯素', 'vegan'], ['爸爸是纯素食主义者', 'vegan'],
     ['爸爸不是素食主义者', 'omnivore'], ['爸爸不吃素', 'omnivore'],
     ['爸爸不再吃素', 'omnivore'], ['爸爸饮食类型：vegan', 'vegan'],
@@ -100,6 +101,7 @@ test('questions, negations of vegan and dislikes do not assert restrictions', ()
   for (const text of [
     '爸爸不是纯素', '爸爸不喜欢吃素', '爸爸不爱吃素', '爸爸是素食主义者吗',
     '爸爸不喜欢吃肉', '爸爸不爱吃荤', '爸爸不吃肉？', '爸爸不吃荤吗',
+    '爸爸是蛋奶素吗', '爸爸是蛋奶素？', '爸爸不是蛋奶素', '爸爸并不是蛋奶素',
     '爸爸是素食主义者？', '爸爸是不是吃素', '爸爸吃素吗？', '爸爸不吃素？',
   ]) {
     const updates = extractProfileUpdates(text, graph);
@@ -135,6 +137,67 @@ test('local extraction preserves unrelated food avoidance alongside diet changes
     { key: '饮食禁忌', value: '不吃香菜' }, { key: '饮食偏好', value: '喜欢吃苹果' },
     { key: '饮食类型', value: 'omnivore' },
   ]);
+});
+
+test('food avoidance cannot downgrade a declared or persisted vegan diet', () => {
+  for (const avoidance of ['不吃肉', '不吃肉类', '不吃荤', '不吃荤食', '忌荤']) {
+    for (const text of [`爸爸吃纯素，${avoidance}`, `爸爸${avoidance}，吃纯素`]) {
+      const { graph, member } = setup();
+      extractProfileUpdates(text, graph).flatMap(u => u.attributes)
+        .forEach(a => setMemberAttribute(graph, member.id, a.key, a.value));
+      assert.equal(dietaryTypeFromAttributes(graph.objects(member.id, 'hasAttribute')), 'vegan', text);
+    }
+    const { graph, member } = setup();
+    for (const update of extractProfileUpdates(`爸爸吃纯素，${avoidance}`, graph)) {
+      update.attributes.forEach(a => setMemberAttribute(graph, member.id, a.key, a.value));
+    }
+    assert.equal(dietaryTypeFromAttributes(graph.objects(member.id, 'hasAttribute')), 'vegan', avoidance);
+    setMemberAttribute(graph, member.id, '饮食禁忌', avoidance);
+    assert.equal(dietaryTypeFromAttributes(graph.objects(member.id, 'hasAttribute')), 'vegan', avoidance);
+    migrateLegacyKnowledge(graph);
+    const attributes = graph.objects(member.id, 'hasAttribute');
+    assert.equal(dietaryTypeFromAttributes(attributes), 'vegan', avoidance);
+    assert.ok(attributes.some(a => a.key === '饮食禁忌' && a.value === avoidance), avoidance);
+  }
+});
+
+test('every exact vegan alias coexists with all avoidance aliases in either legacy order', () => {
+  const veganAliases = ['vegan', '纯素', '纯素食', '纯素食者', '纯素主义者', '纯素食主义者', '吃纯素', '只吃纯素', '严格素食'];
+  const avoidanceAliases = ['不吃肉', '不吃肉类', '不吃荤', '不吃荤食', '忌荤'];
+  const legacyKeys = ['饮食偏好', '饮食禁忌', '饮食习惯', '饮食方式', '饮食限制', '饮食'];
+  for (const alias of veganAliases) {
+    for (const avoidance of avoidanceAliases) {
+      for (const key of legacyKeys) {
+        const vegan = { key: '饮食偏好', value: alias };
+        const unrelated = { key, value: avoidance };
+        assert.equal(dietaryTypeFromAttributes([unrelated]), undefined, `${key}:${avoidance}`);
+        assert.equal(dietaryTypeFromAttributes([vegan, unrelated]), 'vegan', `${alias},${avoidance}`);
+        assert.equal(dietaryTypeFromAttributes([unrelated, vegan]), 'vegan', `${avoidance},${alias}`);
+        const { graph, member } = setup();
+        setMemberAttribute(graph, member.id, vegan.key, vegan.value);
+        setMemberAttribute(graph, member.id, unrelated.key, unrelated.value);
+        migrateLegacyKnowledge(graph);
+        const attributes = graph.objects(member.id, 'hasAttribute');
+        assert.equal(dietaryTypeFromAttributes(attributes), 'vegan', `${key}:${avoidance}`);
+        assert.ok(attributes.some(a => a.key === key && a.value === avoidance));
+      }
+    }
+  }
+});
+
+test('clause-level negated avoidance does not record an avoidance or dietary type', () => {
+  for (const negation of ['并不是', '不是', '并非', '没有', '并没有']) {
+    for (const avoidance of ['不吃肉', '不吃荤', '不吃素', '不吃香菜']) {
+      const { graph, member } = setup();
+      const text = `爸爸${negation}${avoidance}`;
+      const attributes = extractProfileUpdates(text, graph).flatMap(u => u.attributes);
+      assert.deepEqual(attributes, [], text);
+      assert.equal(dietaryTypeFromAttributes(attributes), undefined, text);
+      setMemberAttribute(graph, member.id, '饮食类型', 'vegan');
+      attributes.forEach(a => setMemberAttribute(graph, member.id, a.key, a.value));
+      assert.equal(dietaryTypeFromAttributes(graph.objects(member.id, 'hasAttribute')), 'vegan', text);
+    }
+  }
 });
 
 test('legacy migration persists canonical diets, preserves preferences and is idempotent', () => {
