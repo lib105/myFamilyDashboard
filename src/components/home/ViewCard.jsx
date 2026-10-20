@@ -86,7 +86,7 @@ function ProduceView({ args = {} }) {
       })}
       {result.excluded.length > 0 && (
         <div className="text-xs text-muted">
-          🚫 已因过敏排除：{result.excluded.map(e => `${e.ingredient.label}（${e.reason}）`).join('；')}
+          🚫 已排除：{result.excluded.map(e => `${e.ingredient.label}（${e.reason}）`).join('；')}
         </div>
       )}
     </>
@@ -95,9 +95,10 @@ function ProduceView({ args = {} }) {
 
 function RecipesView({ args = {} }) {
   const graph = useGraph();
-  const { recipes } = recommendRecipes(graph, { mealType: args.mealType, memberIds: args.memberIds });
-  if (!recipes.length) return <div className="text-muted">暂无合适的食谱</div>;
+  const { recipes, excluded } = recommendRecipes(graph, { mealType: args.mealType, memberIds: args.memberIds });
   return (
+    <>
+    {!recipes.length && <div className="text-muted">暂无合适的食谱</div>}
     <div className="recipe-grid">
       {recipes.map(({ recipe, ingredients, warnings }) => (
         <div key={recipe.id} className="recipe-card">
@@ -127,6 +128,10 @@ function RecipesView({ args = {} }) {
         </div>
       ))}
     </div>
+    {excluded.length > 0 && <div className="text-xs text-muted">
+      🚫 已排除：{excluded.map(e => `${e.recipe.label}（${e.reason}）`).join('；')}
+    </div>}
+    </>
   );
 }
 

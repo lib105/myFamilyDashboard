@@ -1,4 +1,5 @@
 import { KINSHIP, getMembers } from '../ontology/queries.js';
+import { normalizeDietAttribute } from '../ontology/diet.js';
 
 const PUNCT = /[，。,；;！!？?\n]/;
 const HEALTH_HINT = /(病|炎|症|痛|疼|偏高|偏低|不好|不足|失眠|虚|弱|肥胖|超重|偏瘦|咳|喘|胃|肠|肝|肾|心脏|血|过敏|感冒|发烧|便秘|腹泻|湿疹|哮喘|近视)/;
@@ -65,8 +66,29 @@ function extractFacts(segment, graph) {
   });
 
   // 4) Diet preferences
+  work = work.replace(/[^，。,；;！!？?\n]+[？?]?/g, clause => {
+    if (/(?:并不是|不是|并非|没有|并没有)\s*(?:不吃|不能吃|忌口|忌)/.test(clause)) {
+      return ' '.repeat(clause.length);
+    }
+    if (!/(素食|吃素|纯素|蛋奶素|杂食|荤|肉|vegetarian|vegan|omnivore)/i.test(clause)) return clause;
+    if (/[？?]|吗|么|是否|是不是|能否|要不要|如何|怎么/.test(clause)) return ' '.repeat(clause.length);
+    const value = clause.trim().replace(/^的\s*/, '');
+    const attr = normalizeDietAttribute('饮食偏好', value);
+    if (attr.key === '饮食类型') {
+      facts.attributes.push(attr);
+      return ' '.repeat(clause.length);
+    }
+    // Do not let the generic "不吃…" rule turn a negated vegan statement or
+    // a mere dislike of vegetarian food into a dietary type.
+    if (/^(?:现在|目前|已经)?(?:并不是|不是|不再是|不喜欢|不爱|不想|不一定|并非|没有|非)/.test(value)) {
+      return ' '.repeat(clause.length);
+    }
+    return clause;
+  });
   work = work.replace(/(不爱吃|不喜欢吃|不能吃|不吃|忌口)\s*[:：]?\s*([^，。,；;！!？?\s]{1,12})/g, (m, verb, what) => {
-    facts.attributes.push({ key: '饮食禁忌', value: `${verb === '忌口' ? '忌' : '不吃'}${what}` });
+    const attr = { key: '饮食禁忌', value: `${verb === '忌口' ? '忌' : '不吃'}${what}` };
+    facts.attributes.push(/^(不爱吃|不喜欢吃)$/.test(verb) && normalizeDietAttribute(attr.key, attr.value).key === '饮食类型'
+      ? { key: '饮食偏好', value: `${verb}${what}` } : attr);
     return ' '.repeat(m.length);
   });
   work = work.replace(/(爱吃|喜欢吃|喜欢喝|爱喝)\s*([^，。,；;！!？?\s]{1,12})/g, (m, verb, what) => {

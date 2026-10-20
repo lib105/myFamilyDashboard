@@ -20,6 +20,12 @@ function mentionedMember(text, graph) {
     .sort((a, b) => a.idx - b.idx)[0]?.m.name;
 }
 
+function recommendationMember(text, graph) {
+  if (/全家|大家/.test(text)) return undefined;
+  return getMembers(graph).find(m => ['给', '为', '针对'].some(prefix => text.includes(`${prefix}${m.name}`)))?.name
+    || mentionedMember(text, graph);
+}
+
 function orderItems(text, graph) {
   return findIngredientsInText(graph, text).map(({ ingredient, index }) => {
     const before = text.slice(Math.max(0, index - 6), index);
@@ -112,9 +118,9 @@ export function parseAgentCommand(text, graph) {
 export function extractArgs(capability, text, graph) {
   switch (capability.handler) {
     case 'recommend_produce':
-      return { category: CATEGORY_WORDS.find(([, re]) => re.test(text))?.[0] || 'all', member: mentionedMember(text, graph) };
+      return { category: CATEGORY_WORDS.find(([, re]) => re.test(text))?.[0] || 'all', member: recommendationMember(text, graph) };
     case 'recommend_recipes':
-      return { mealType: MEAL_WORDS.find(([, re]) => re.test(text))?.[0], member: mentionedMember(text, graph) };
+      return { mealType: MEAL_WORDS.find(([, re]) => re.test(text))?.[0], member: recommendationMember(text, graph) };
     case 'collect_ingredient_data': {
       const found = findIngredientsInText(graph, text).map(f => f.ingredient.label);
       if (found.length) return { items: found };
@@ -156,7 +162,7 @@ export function routeLocally(text, graph) {
 
   const calls = [];
   const updates = extractProfileUpdates(text, graph);
-  if (updates.length) calls.push({ capabilityId: 'update_member_profile', args: { updates } });
+  if (updates.length && isEnabled(graph, 'update_member_profile')) calls.push({ capabilityId: 'update_member_profile', args: { updates } });
 
   const scored = getCapabilities(graph, { enabledOnly: true })
     .filter(c => !['update_member_profile', 'manage_capabilities'].includes(c.id))

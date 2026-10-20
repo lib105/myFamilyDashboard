@@ -94,7 +94,7 @@ export default function FamilyHome() {
     if (stamped.length) setViews(prev => mergeViews(prev, stamped));
     if (stamped.length || reused.length) setFreshIds([...reused, ...stamped].map(v => v.id));
     // Modules the user just asked about are revealed again, even if previously hidden.
-    const touched = [...stamped.map(v => v.type), ...(profileTouched ? ['profiles'] : [])];
+    const touched = [...stamped.filter(v => !v.auto).map(v => v.type), ...(profileTouched ? ['profiles'] : [])];
     setLayout(prev => revealModules(cmd ? applyLayoutCommand(prev, cmd) : prev, touched));
     const next = {
       question,

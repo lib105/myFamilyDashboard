@@ -101,13 +101,19 @@ export async function handleUserMessage(text, { graph, history = [] }) {
   }
   if (!calls) calls = routeLocally(text, graph);
 
-  // After profile changes, refresh home recommendations automatically.
-  if (calls.some(c => c.capabilityId === 'update_member_profile')
-    && !calls.some(c => ['recommend_produce', 'recommend_recipes'].includes(c.capabilityId))) {
-    ['recommend_produce', 'recommend_recipes'].forEach(id => {
-      if (graph.getEntity(id)?.enabled !== false) calls.push({ capabilityId: id, args: {}, auto: true });
-    });
-  }
+  // Mutations must finish before even explicitly planned recommendations read the graph.
+  const recommendations = new Set(['recommend_produce', 'recommend_recipes']);
+  const seen = new Set();
+  calls = [
+    ...calls.filter(c => c.capabilityId === 'update_member_profile'),
+    ...calls.filter(c => c.capabilityId !== 'update_member_profile'),
+  ].filter(c => {
+    if (!recommendations.has(c.capabilityId)) return true;
+    const key = JSON.stringify([c.capabilityId, c.args?.member || '', c.args?.category || 'all', c.args?.mealType || '']);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 
   const replies = [];
   const failures = [];
@@ -118,14 +124,22 @@ export async function handleUserMessage(text, { graph, history = [] }) {
   // `calls` may grow while iterating: the home agent appends cards for shown / pinned modules.
   for (const call of calls) {
     const capability = graph.getEntity(call.capabilityId);
-    if (!capability) continue;
+    if (!capability || capability.enabled === false) continue;
     const agent = getCapabilityAgent(graph, capability);
     const entry = { agent: agent ? `${agent.emoji} ${agent.label}` : 'Agent', capability: capability.label, auto: call.auto };
     trace.push(entry);
     try {
       const result = await executeCapability(capability, call.args, { graph, text });
+      if (result.profileUpdated) {
+        recommendations.forEach(id => {
+          const cap = graph.getEntity(id);
+          if (cap?.type === 'Capability' && cap.enabled !== false && !calls.some(c => c.capabilityId === id)) {
+            calls.push({ capabilityId: id, args: {}, auto: true });
+          }
+        });
+      }
       if (result.reply) (call.auto ? autoReplies : replies).push(result.reply);
-      views.push(...result.views);
+      views.push(...result.views.map(v => ({ ...v, auto: Boolean(call.auto) })));
       if (result.layout && !layout) {
         layout = result.layout;
         const verb = { hide: '隐藏', show: '显示', pin: '置顶', reset: '恢复默认布局' }[layout.action];

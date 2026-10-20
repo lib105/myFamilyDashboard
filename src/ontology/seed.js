@@ -1,8 +1,10 @@
-import { SEASONS } from './schema.js';
+import { SEASONS, FOOD_SOURCES } from './schema.js';
 import conditions from '../data/food/conditions.json';
 import allergens from '../data/food/allergens.json';
 import ingredients from '../data/food/ingredients.json';
+import ingredientSources from '../data/food/ingredientSources.json';
 import recipes from '../data/food/recipes.json';
+import recipeExtraSources from '../data/food/recipeExtraSources.json';
 import priceData from '../data/food/supermarketPrices.json';
 import promotions from '../data/food/appDiscounts.json';
 import shipments from '../data/food/logistics.json';
@@ -11,7 +13,8 @@ import members from '../data/members.json';
 import trips from '../data/trips.json';
 import tasks from '../data/tasks.json';
 import reminders from '../data/healthReminders.json';
-import { findMember } from './queries.js';
+import { findMember, setMemberAttribute } from './queries.js';
+import { dietaryTypeFromAttributes } from './diet.js';
 
 export const condId = (id) => `cond_${id}`;
 export const allergenId = (id) => `allergen_${id}`;
@@ -22,6 +25,7 @@ export const memberId = (id) => (id ? `member_${id}` : '');
 export function seedBase(graph) {
   graph.batch(() => {
     SEASONS.forEach(s => graph.addEntity({ ...s, type: 'Season' }, 'base'));
+    FOOD_SOURCES.forEach(s => graph.addEntity({ ...s, type: 'FoodSource' }, 'base'));
 
     conditions.forEach(c => graph.addEntity({ ...c, id: condId(c.id), type: 'HealthCondition' }, 'base'));
     allergens.forEach(a => graph.addEntity({ ...a, id: allergenId(a.id), type: 'Allergen' }, 'base'));
@@ -36,11 +40,17 @@ export function seedBase(graph) {
       SEASONS.filter(s => s.months.some(m => i.months.includes(m)))
         .forEach(s => graph.addTriple(id, 'availableIn', s.id, 'base'));
     });
+    Object.entries(ingredientSources).forEach(([source, ids]) => {
+      ids.forEach(id => graph.addTriple(ingId(id), 'derivedFrom', source, 'base'));
+    });
 
     recipes.forEach(r => {
       const { ingredients: used, ...props } = r;
       graph.addEntity({ ...props, type: 'Recipe' }, 'base');
       used.forEach(i => graph.addTriple(r.id, 'usesIngredient', ingId(i), 'base'));
+    });
+    Object.entries(recipeExtraSources).forEach(([source, ids]) => {
+      ids.forEach(id => graph.addTriple(id, 'extrasDerivedFrom', source, 'base'));
     });
 
     priceData.stores.forEach(s => graph.addEntity({ ...s, type: 'Store' }, 'base'));
@@ -126,10 +136,20 @@ export function linkDemoActivities(graph) {
 /**
  * Upgrades knowledge persisted by older versions, where tasks / reminders
  * pointed at members through name strings and capabilities duplicated their
- * `providedBy` relation in an `agentId` property.
+ * `providedBy` relation in an `agentId` property. Explicit legacy diet
+ * declarations are consolidated into the single-valued 饮食类型 attribute.
  */
 export function migrateLegacyKnowledge(graph) {
   graph.batch(() => {
+    graph.findEntities('FamilyMember').forEach(member => {
+      const attributes = graph.objects(member.id, 'hasAttribute');
+      const type = dietaryTypeFromAttributes(attributes);
+      if (type && (attributes.filter(a => a.key === '饮食类型').length !== 1
+        || attributes.some(a => a.key !== '饮食类型' && dietaryTypeFromAttributes([a]))
+        || !attributes.some(a => a.key === '饮食类型' && a.value === type))) {
+        setMemberAttribute(graph, member.id, '饮食类型', type);
+      }
+    });
     linkDemoActivities(graph);
     graph.findEntities('Task', t => Array.isArray(t.assignees)).forEach(t => {
       t.assignees.forEach(name => {
