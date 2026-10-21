@@ -105,7 +105,7 @@ function updateMemberProfile(args, { graph }) {
   if (!lines.length) return { reply: '', views: [] };
   return {
     reply: `🩺 已更新家庭健康档案：\n${lines.join('\n')}${advice.length ? `\n\n饮食建议：\n${[...new Set(advice)].join('\n')}` : ''}`,
-    views: [{ type: 'profile', title: '家庭健康档案' }],
+    views: [{ type: 'profiles', title: '家庭档案' }],
     profileUpdated: true,
   };
 }
@@ -113,7 +113,14 @@ function updateMemberProfile(args, { graph }) {
 function viewFamilyProfile(args, { graph }) {
   return {
     reply: `👨‍👩‍👧‍👦 当前家庭档案：\n${describeFamily(graph) || '还没有成员，告诉我“爸爸有高血压”即可建档。'}`,
-    views: [{ type: 'profile', title: '家庭健康档案' }],
+    views: [{ type: 'profiles', title: '家庭档案' }],
+  };
+}
+
+function queryWeather() {
+  return {
+    reply: '🌤️ 今日天气已显示在首页卡片中，可在卡片里切换城市或使用当前位置。',
+    views: [{ type: 'weather', title: '今日天气' }],
   };
 }
 
@@ -379,6 +386,7 @@ function arrangeHome(args, { text }) {
 const HANDLERS = {
   update_member_profile: updateMemberProfile,
   view_family_profile: viewFamilyProfile,
+  query_weather: queryWeather,
   recommend_produce: recommendProduce,
   recommend_recipes: recommendRecipesHandler,
   collect_ingredient_data: collectIngredientData,

@@ -1,9 +1,13 @@
-const VIEWS_KEY = 'family-dashboard.home-views.v1';
+const VIEWS_KEY = 'family-dashboard.home-views.v2';
+/** v1 stored views without the weather / profiles cards (they used to be fixed page sections). */
+const LEGACY_VIEWS_KEY = 'family-dashboard.home-views.v1';
 const CHAT_KEY = 'family-dashboard.chat.v1';
-const MAX_VIEWS = 10;
+const MAX_VIEWS = 12;
 const MAX_MESSAGES = 60;
 
 export const DEFAULT_VIEWS = [
+  { id: 'default-weather', type: 'weather', title: '今日天气', args: {}, capabilityId: 'query_weather' },
+  { id: 'default-profiles', type: 'profiles', title: '家庭档案', args: {}, capabilityId: 'view_family_profile' },
   { id: 'default-produce', type: 'produce', title: '当季推荐食材', args: { category: 'all' }, capabilityId: 'recommend_produce' },
   { id: 'default-recipes', type: 'recipes', title: '简单食谱推荐', args: {}, capabilityId: 'recommend_recipes' },
   { id: 'default-tasks', type: 'tasks', title: '家庭任务', args: {}, capabilityId: 'list_tasks' },
@@ -27,7 +31,14 @@ const write = (key, value) => {
   }
 };
 
-export const loadViews = () => read(VIEWS_KEY, DEFAULT_VIEWS);
+export function loadViews() {
+  const views = read(VIEWS_KEY, null);
+  if (views) return views;
+  const legacy = read(LEGACY_VIEWS_KEY, null);
+  if (!legacy) return DEFAULT_VIEWS;
+  const added = DEFAULT_VIEWS.filter(d => ['weather', 'profiles'].includes(d.type) && !legacy.some(v => v.type === d.type));
+  return [...added, ...legacy].slice(0, MAX_VIEWS);
+}
 export const saveViews = (views) => write(VIEWS_KEY, views);
 export const loadMessages = () => read(CHAT_KEY, []);
 export const saveMessages = (messages) => write(CHAT_KEY, messages.slice(-MAX_MESSAGES));

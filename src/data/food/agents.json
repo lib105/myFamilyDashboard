@@ -5,6 +5,7 @@
     { "id": "agent_ingredient", "label": "食材数据 Agent", "emoji": "📚", "description": "采集、查询食材营养与时令数据" },
     { "id": "agent_shopping", "label": "采购 Agent", "emoji": "🛒", "description": "超市比价、汇总其他 App 打折信息、模拟下单" },
     { "id": "agent_logistics", "label": "物流 Agent", "emoji": "🚚", "description": "查询订单与快递物流状态" },
+    { "id": "agent_weather", "label": "天气 Agent", "emoji": "🌤️", "description": "查询今日天气（Open-Meteo），给出家庭出行与穿衣提示" },
     { "id": "agent_travel", "label": "旅行 Agent", "emoji": "✈️", "description": "管理家庭旅行计划、行前清单与孩子们的旅行心愿，提供出行建议",
       "agentMd": "# 角色\n你是家庭的旅行规划师，熟悉亲子出行。\n\n# 行为准则\n- 先确认目的地、出行时间、预算和同行成员\n- 给出的建议要兼顾老人与孩子的体力和健康状况\n- 涉及签证、证件、保险等事项时提醒用户以官方信息为准",
       "skillMd": "# 技能\n- 查询家庭旅行计划（目的地、时间、预算、状态）\n- 跟踪行前准备清单并勾选完成\n- 汇总孩子们的旅行心愿\n- 结合知识库与参考网址给出行程与攻略建议",
@@ -46,6 +47,13 @@
       "description": "展示全部家庭成员的健康档案。",
       "keywords": ["查看档案", "家庭档案", "健康档案", "家人情况", "成员信息"],
       "examples": ["看看家庭健康档案"],
+      "params": { "type": "object", "properties": {} }
+    },
+    {
+      "id": "query_weather", "label": "查看今日天气", "agentId": "agent_weather", "handler": "query_weather", "priority": 30,
+      "description": "在首页展示所选城市今日天气、温度范围、降水概率及家庭出行提示。",
+      "keywords": ["天气", "气温", "下雨", "带伞", "冷不冷", "热不热"],
+      "examples": ["今天天气怎么样", "明天出门要带伞吗"],
       "params": { "type": "object", "properties": {} }
     },
     {

@@ -19,7 +19,8 @@ function locate() {
   });
 }
 
-export default function WeatherBar() {
+/** Home card body for the `weather` view type. */
+export default function WeatherView() {
   const [cityId, setCityId] = useState(loadCityId);
   const [state, setState] = useState({ status: 'loading', data: null, error: '' });
   const season = seasonOfMonth(currentMonth());
@@ -47,7 +48,7 @@ export default function WeatherBar() {
   const desc = w ? describeWeather(w.code) : null;
 
   return (
-    <div className="weather-bar" role="region" aria-label="今日天气">
+    <div className="weather-bar">
       <div className="weather-main">
         <span className="weather-emoji" aria-hidden="true">{desc ? desc.emoji : season.emoji}</span>
         {state.status === 'ok' && (
