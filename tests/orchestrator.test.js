@@ -145,3 +145,18 @@ test('AI ingredient collection requires complete validated source metadata', asy
       sources?.every(s => s !== 'invalid') ? sources : []);
   }
 });
+
+test('family profiles and weather are typed home modules backed by agent capabilities', async () => {
+  const graph = fixture();
+  const profile = await handleUserMessage('爸爸是素食主义者', { graph });
+  assert.ok(profile.views.some(v => v.type === 'profiles' && v.capabilityId === 'update_member_profile' && !v.auto));
+
+  const weather = await handleUserMessage('今天天气怎么样', { graph });
+  assert.deepEqual(weather.views.map(v => [v.type, v.capabilityId]), [['weather', 'query_weather']]);
+
+  for (const [text, type] of [['显示天气', 'weather'], ['把家庭档案放到最上面', 'profiles']]) {
+    const result = await handleUserMessage(text, { graph });
+    assert.equal(result.layout.modules[0], type);
+    assert.ok(result.views.some(v => v.type === type && v.auto));
+  }
+});

@@ -1,20 +1,17 @@
 import { useGraph } from '../../ontology/index.js';
 import { getFamilyProfiles, removeMember } from '../../ontology/queries.js';
 
-export default function FamilyProfiles({ fresh, onAsk }) {
+/** Home card body for the `profiles` view type. */
+export default function ProfilesView({ onAsk }) {
   const graph = useGraph();
   const profiles = getFamilyProfiles(graph);
 
   const remove = (memberId, p, o) => graph.removeTriple(memberId, p, o);
 
   return (
-    <div className={`card view-card profile-panel${fresh ? ' fresh' : ''}`} style={{ borderTop: '4px solid #E91E8C' }}>
-      <div className="card-header profile-panel-header">
-        <span className="card-title">👨‍👩‍👧‍👦 家庭档案</span>
-        <span className="badge badge-gray" title="健康档案 Agent">🩺 {profiles.length}</span>
-      </div>
+    <>
       {profiles.length === 0 ? (
-        <div className="empty-state profile-list" style={{ padding: 'var(--spacing-md)' }}>
+        <div className="empty-state" style={{ padding: 'var(--spacing-md)' }}>
           <span style={{ fontSize: 28 }}>📝</span>
           <p className="text-sm">还没有家庭成员档案，在右侧对话框告诉我吧～</p>
         </div>
@@ -63,8 +60,8 @@ export default function FamilyProfiles({ fresh, onAsk }) {
         </div>
       )}
       <div className="text-xs text-muted profile-hint" title="例如：“奶奶72岁，血糖偏高，对花生过敏，最近睡眠不好”">
-        💬 在对话中随时补充，属性不限
+        💬 共 {profiles.length} 位成员，在对话中随时补充，属性不限
       </div>
-    </div>
+    </>
   );
 }

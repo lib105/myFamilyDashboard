@@ -5,9 +5,13 @@ import { getIngredientFacts, getFamilyProfiles, getAgents, getCapabilities } fro
 import { recommendIngredients, recommendRecipes } from '../../agents/recommender.js';
 import { confirmOrder, cancelOrder } from '../../agents/capabilities.js';
 import { TripsView, TasksView, HealthView, RemindersView } from './FamilyViews.jsx';
+import ProfilesView from './ProfilesView.jsx';
+import WeatherView from './WeatherView.jsx';
 import Markdown from '../common/Markdown.jsx';
 
 const VIEW_META = {
+  weather:         { emoji: '🌤️', color: '#5DADE2' },
+  profiles:        { emoji: '👨‍👩‍👧‍👦', color: '#E91E8C' },
   produce:         { emoji: '🥗', color: '#27AE60' },
   recipes:         { emoji: '🍳', color: '#FF6B35' },
   ingredient_info: { emoji: '📚', color: '#4A90D9' },
@@ -330,6 +334,8 @@ function TextView({ view }) {
 }
 
 const RENDERERS = {
+  weather: WeatherView,
+  profiles: ProfilesView,
   produce: ProduceView,
   recipes: RecipesView,
   ingredient_info: IngredientInfoView,
@@ -345,7 +351,7 @@ const RENDERERS = {
   text: TextView,
 };
 
-export default function ViewCard({ view, fresh, onClose }) {
+export default function ViewCard({ view, fresh, onClose, onAsk }) {
   const graph = useGraph();
   const Renderer = RENDERERS[view.type];
   if (!Renderer) return null;
@@ -361,7 +367,7 @@ export default function ViewCard({ view, fresh, onClose }) {
           {onClose && <button className="btn btn-ghost btn-sm" onClick={onClose} aria-label="关闭卡片">✕</button>}
         </div>
       </div>
-      <Renderer args={view.args} view={view} />
+      <Renderer args={view.args} view={view} onAsk={onAsk} />
       {['produce', 'recipes', 'ingredient_info', 'health'].includes(view.type) && (
         <div className="text-xs text-muted mt-sm">ℹ️ {DISCLAIMER}</div>
       )}

@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isAIConfigured, loadAISettings } from '../../agents/llmClient.js';
-import FamilyProfiles from './FamilyProfiles.jsx';
 import ChatPanel from './ChatPanel.jsx';
 import ViewCard from './ViewCard.jsx';
-import WeatherBar from './WeatherBar.jsx';
 import UnansweredDialog from './UnansweredDialog.jsx';
 import Markdown from '../common/Markdown.jsx';
 import {
@@ -11,7 +9,7 @@ import {
 } from './homeViews.js';
 import { applyLayoutCommand, arrangeViews, moduleLabel, revealModules } from '../../agents/homeLayout.js';
 
-function AnswerStage({ answer, views, freshIds, onClose, onCloseView }) {
+function AnswerStage({ answer, views, freshIds, onClose, onCloseView, onAsk }) {
   const shown = answer.viewIds.map(id => views.find(v => v.id === id)).filter(Boolean);
   return (
     <section className="answer-stage card" aria-live="polite" aria-label="当前问题的回答">
@@ -36,7 +34,7 @@ function AnswerStage({ answer, views, freshIds, onClose, onCloseView }) {
       {shown.length > 0 && (
         <div className="answer-views">
           {shown.map(v => (
-            <ViewCard key={v.id} view={v} fresh={freshIds.includes(v.id)} onClose={() => onCloseView(v.id)} />
+            <ViewCard key={v.id} view={v} fresh={freshIds.includes(v.id)} onClose={() => onCloseView(v.id)} onAsk={onAsk} />
           ))}
         </div>
       )}
@@ -49,7 +47,6 @@ export default function FamilyHome() {
   const [answer, setAnswer] = useState(loadAnswer);
   const [layout, setLayout] = useState(loadLayout);
   const [freshIds, setFreshIds] = useState([]);
-  const [profileFresh, setProfileFresh] = useState(false);
   const [unanswered, setUnanswered] = useState(null);
   const [draft, setDraft] = useState('');
   const inputRef = useRef(null);
@@ -60,10 +57,10 @@ export default function FamilyHome() {
   useEffect(() => saveLayout(layout), [layout]);
 
   useEffect(() => {
-    if (!freshIds.length && !profileFresh) return undefined;
-    const t = setTimeout(() => { setFreshIds([]); setProfileFresh(false); }, 2500);
+    if (!freshIds.length) return undefined;
+    const t = setTimeout(() => setFreshIds([]), 2500);
     return () => clearTimeout(t);
-  }, [freshIds, profileFresh]);
+  }, [freshIds]);
 
   const showStage = () => {
     requestAnimationFrame(() => {
@@ -82,19 +79,17 @@ export default function FamilyHome() {
     }
     const cmd = result.layout;
     let incoming = result.views || [];
-    const profileTouched = incoming.some(v => v.type === 'profile');
-    if (profileTouched) setProfileFresh(true);
     // Showing / pinning a module reuses the cards already on the page; new cards only fill the gaps.
     const reused = cmd && ['show', 'pin'].includes(cmd.action) ? views.filter(v => cmd.modules.includes(v.type)) : [];
     if (reused.length) {
       const have = new Set(reused.map(v => v.type));
       incoming = incoming.filter(v => !have.has(v.type));
     }
-    const stamped = stampViews(incoming.filter(v => v.type !== 'profile'));
+    const stamped = stampViews(incoming);
     if (stamped.length) setViews(prev => mergeViews(prev, stamped));
     if (stamped.length || reused.length) setFreshIds([...reused, ...stamped].map(v => v.id));
     // Modules the user just asked about are revealed again, even if previously hidden.
-    const touched = [...stamped.filter(v => !v.auto).map(v => v.type), ...(profileTouched ? ['profiles'] : [])];
+    const touched = stamped.filter(v => !v.auto).map(v => v.type);
     setLayout(prev => revealModules(cmd ? applyLayoutCommand(prev, cmd) : prev, touched));
     const next = {
       question,
@@ -119,18 +114,12 @@ export default function FamilyHome() {
   const others = arrangeViews(views.filter(v => !answerIds.has(v.id)), layout);
   const removeView = id => setViews(prev => prev.filter(x => x.id !== id));
   const showModule = id => setLayout(prev => applyLayoutCommand(prev, { action: 'show', modules: [id] }));
-  const profilesHidden = layout.hidden.includes('profiles');
+  const askAbout = name => { setDraft(`${name}：`); inputRef.current?.focus(); };
 
   return (
     <div className="page-body home-page">
-      <div className={`home-grid${profilesHidden ? ' no-profiles' : ''}`}>
-        {!profilesHidden && (
-          <aside className="home-profiles">
-            <FamilyProfiles fresh={profileFresh} onAsk={name => { setDraft(`${name}：`); inputRef.current?.focus(); }} />
-          </aside>
-        )}
+      <div className="home-grid">
         <div className="home-main" ref={stageRef}>
-          {!layout.hidden.includes('weather') && <WeatherBar />}
           {answer && (
             <AnswerStage
               answer={answer}
@@ -138,6 +127,7 @@ export default function FamilyHome() {
               freshIds={freshIds}
               onClose={() => setAnswer(null)}
               onCloseView={removeView}
+              onAsk={askAbout}
             />
           )}
           {!answer && (
@@ -159,7 +149,7 @@ export default function FamilyHome() {
             <div className="group-title home-more-title">{answer ? '📌 其他模块' : '📌 为你推荐'}</div>
           )}
           {others.map(v => (
-            <ViewCard key={v.id} view={v} fresh={freshIds.includes(v.id)} onClose={() => removeView(v.id)} />
+            <ViewCard key={v.id} view={v} fresh={freshIds.includes(v.id)} onClose={() => removeView(v.id)} onAsk={askAbout} />
           ))}
           {views.length === 0 && !answer && (
             <div className="card empty-state">

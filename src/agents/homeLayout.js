@@ -3,14 +3,13 @@
  * “把超市打折信息放到最上面” and turns them into layout changes.
  *
  * Layout state: { hidden: string[], pinned: string[] } where entries are module ids
- * (view types plus the fixed `profiles` / `weather` modules); `pinned` is ordered,
- * most recently pinned first.
+ * (= home view types); `pinned` is ordered, most recently pinned first.
  */
 
 /** Order matters: more specific patterns first, matched text is consumed. */
 export const HOME_MODULES = [
-  { id: 'profiles', label: '家庭档案', re: /家庭档案|健康档案|成员档案|家人档案|档案/, fixed: true },
-  { id: 'weather', label: '天气', re: /天气预报|天气/, fixed: true },
+  { id: 'profiles', label: '家庭档案', re: /家庭档案|健康档案|成员档案|家人档案|档案/, capabilityId: 'view_family_profile' },
+  { id: 'weather', label: '天气', re: /天气预报|天气/, capabilityId: 'query_weather' },
   { id: 'discounts', label: '打折信息', re: /(超市|App|app)?(打折|折扣|优惠|促销|满减)(信息)?/, capabilityId: 'query_app_discounts' },
   { id: 'prices', label: '超市比价', re: /(超市)?(比价|价格)|超市/, capabilityId: 'query_supermarket_price' },
   { id: 'reminders', label: '健康提醒', re: /(健康)?提醒/, capabilityId: 'health_reminders' },
