@@ -1,0 +1,59 @@
+[
+  {
+    "id": "site_bilibili",
+    "label": "哔哩哔哩 (Bilibili)",
+    "emoji": "📺",
+    "domain": "search.bilibili.com",
+    "baseUrl": "https://search.bilibili.com",
+    "searchUrlTemplate": "https://search.bilibili.com/all?keyword={query}",
+    "synonyms": ["b站", "B站", "bilibili", "哔哩哔哩"],
+    "defaultSite": true
+  },
+  {
+    "id": "site_douyin",
+    "label": "抖音 (Douyin)",
+    "emoji": "🎵",
+    "domain": "www.douyin.com",
+    "baseUrl": "https://www.douyin.com",
+    "searchUrlTemplate": "https://www.douyin.com/search/{query}?type=video",
+    "synonyms": ["抖音", "douyin"]
+  },
+  {
+    "id": "site_bing_video",
+    "label": "必应视频 (Bing Videos)",
+    "emoji": "🎬",
+    "domain": "cn.bing.com",
+    "baseUrl": "https://cn.bing.com/videos",
+    "searchUrlTemplate": "https://cn.bing.com/videos/search?q={query}",
+    "synonyms": ["必应", "bing", "必应视频"]
+  },
+  {
+    "id": "site_taobao",
+    "enabled": false,
+    "disabledReason": "用户已取消淘宝及天猫搜索，仅保留历史站点来源",
+    "label": "淘宝 / 天猫（已停用）",
+    "emoji": "🛍️",
+    "domain": "s.taobao.com",
+    "baseUrl": "https://s.taobao.com",
+    "searchUrlTemplate": "https://s.taobao.com/search?q={query}",
+    "synonyms": ["淘宝", "天猫", "taobao", "tmall"]
+  },
+  {
+    "id": "site_jd",
+    "label": "京东 (JD.com)",
+    "emoji": "🛒",
+    "domain": "search.jd.com",
+    "baseUrl": "https://search.jd.com",
+    "searchUrlTemplate": "https://search.jd.com/Search?keyword={query}&enc=utf-8",
+    "synonyms": ["京东", "jd", "jd.com"]
+  },
+  {
+    "id": "site_xiachufang",
+    "label": "下厨房 (菜谱视频)",
+    "emoji": "🍳",
+    "domain": "www.xiachufang.com",
+    "baseUrl": "https://www.xiachufang.com",
+    "searchUrlTemplate": "https://www.xiachufang.com/search/?keyword={query}",
+    "synonyms": ["下厨房", "菜谱网"]
+  }
+]

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.family-dashboard.ego-bridge</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>__NODE_ABSOLUTE_PATH__</string>
+        <string>__PROJECT_ABSOLUTE_PATH__/server/index.js</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>__PROJECT_ABSOLUTE_PATH__</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>NODE_ENV</key>
+        <string>production</string>
+        <key>EGO_BROWSER_BIN</key>
+        <string>__EGO_BROWSER_ABSOLUTE_PATH__</string>
+        <key>EGO_BRIDGE_TOKEN</key>
+        <string>__SERVER_ONLY_RANDOM_SECRET__</string>
+        <key>EGO_BRIDGE_PORT</key>
+        <string>3001</string>
+        <!-- ego-browser may itself use /usr/bin/env node. Include the Node directory. -->
+        <key>PATH</key>
+        <string>__NODE_BIN_DIRECTORY__:__HOME_ABSOLUTE_PATH__/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+    <key>LimitLoadToSessionType</key>
+    <string>Aqua</string>
+
+    <key>StandardOutPath</key>
+    <string>__HOME_ABSOLUTE_PATH__/Library/Logs/FamilyDashboard/ego-bridge.log</string>
+    <key>StandardErrorPath</key>
+    <string>__HOME_ABSOLUTE_PATH__/Library/Logs/FamilyDashboard/ego-bridge.error.log</string>
+</dict>
+</plist>

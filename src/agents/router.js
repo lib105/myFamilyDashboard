@@ -99,9 +99,46 @@ export function parseReminderSpec(text, graph) {
   return { member, schedule, title: title || rest };
 }
 
-/** Commands for the task / health agents that should bypass profile extraction. */
+/** Extract a JD product query without discarding brand/model/pack-size text. */
+export function parseJDProductQuery(text, graph) {
+  let query = String(text).trim().replace(/^(?:请)?(?:帮我|帮忙)?\s*/, '');
+  for (const name of memberNames(graph)) {
+    query = query.replace(new RegExp(`^(?:帮|给|为)${escapeRe(name)}\\s*`), '');
+  }
+  query = query
+    .replace(/^(?:搜索|搜一下|查一下|查找|查询|看看|找|搜)\s*/, '')
+    .replace(/^(?:在|去|到|用)?\s*(?:京东|jd(?:\.com)?)(?:网站|商城|上)?\s*/i, '')
+    .replace(/^(?:帮我)?(?:搜索|搜一下|查一下|查找|查询|看看|找一下|找个|找|搜|查|买|购买)\s*/, '')
+    .replace(/[，,]\s*(?:看看|查看|查询|查查)?(?:价格|价钱|优惠|折扣|打折|促销).*$/, '')
+    .replace(/(?:的价格和优惠|价格和打折信息|价格和优惠|有什么打折信息|有哪些优惠|有什么优惠|有什么促销|的价格|的优惠|多少钱)\s*[？?。！!]*$/, '')
+    .replace(/\s+(?:优惠|价格|折扣|打折信息)\s*[？?。！!]*$/, '')
+    .replace(/[？?。！!]+$/, '').trim();
+  return query;
+}
+
+/** Commands for browser / task / health / pantry agents bypass profile extraction. */
 export function parseAgentCommand(text, graph) {
   const t = text.trim();
+  if (!/^(?:请)?(?:隐藏|显示|置顶|收起|关闭|打开|恢复)/.test(t)
+    && /飞猪|酒店|住宿|订房|民宿|机票|航班|门票|火车票|高铁|动车/.test(t)
+    && graph.getEntity('fliggy_travel_search')?.type === 'Capability') {
+    return { capabilityId: 'fliggy_travel_search', args: { query: t } };
+  }
+  if (/(?:京东|\bjd(?:\.com)?\b)/i.test(t) && graph.getEntity('search_products_with_browser')?.type === 'Capability'
+    && !/^(?:请)?(?:隐藏|显示|置顶|收起|关闭|打开|恢复)/.test(t)) {
+    return { capabilityId: 'search_products_with_browser', args: { query: parseJDProductQuery(t, graph), site: 'site_jd' } };
+  }
+  if (/(?:沃尔玛|比优特|华润万家)/.test(t) && isEnabled(graph, 'query_supermarket_price')) {
+    let items = findIngredientsInText(graph, t).map(f => f.ingredient.label);
+    if (!items.length) {
+      // Extract target item between store keywords and query words
+      let raw = t.replace(/(?:对比|比较|查看)?(?:沃尔玛|比优特|华润万家|和|与|的|买|查|超市)+/g, ' ')
+                 .replace(/(?:哪个划算|哪家便宜|哪个便宜|哪家划算|多少钱|价格|比价|怎么样|怎样)/g, '')
+                 .trim();
+      if (raw) items = [raw];
+    }
+    return { capabilityId: 'query_supermarket_price', args: { items } };
+  }
   let m = t.match(/^(?:请)?(?:帮我)?(?:添加|新增|创建|安排|布置)(?:一个|一项)?(?:新的?)?(?:家庭)?任务\s*[:：]?\s*(.+)$/);
   if (m && isEnabled(graph, 'add_task')) return { capabilityId: 'add_task', args: parseTaskSpec(m[1], graph) };
   m = t.match(/^(?:请)?(?:帮我)?(?:添加|新增|设置|设)(?:一个|一条)?(?:健康)?提醒\s*[:：]?\s*(.+)$/)
@@ -109,8 +146,45 @@ export function parseAgentCommand(text, graph) {
   if (m && isEnabled(graph, 'add_health_reminder')) return { capabilityId: 'add_health_reminder', args: parseReminderSpec(m[1], graph) };
   if (/完成|做完|打卡|搞定/.test(t) && isEnabled(graph, 'complete_task')) {
     const task = graph.findEntities('Task').find(x => t.includes(x.title));
-    if (task) return { capabilityId: 'complete_task', args: { task: task.title } };
+    if (task) return { capabilityId: 'complete_task', args: { task: task.title, member: mentionedMember(t, graph) } };
   }
+  const hrec = parseHealthRecordCommand(t, graph);
+  if (hrec && isEnabled(graph, 'log_health_record')) return { capabilityId: 'log_health_record', args: hrec };
+  if (/(?:查看|看看|查一下)?.*(?:血压|血糖|体重|健康|监测|吃药|服药).*记录|趋势/.test(t) && isEnabled(graph, 'query_health_records')) {
+    const metric = ['血压', '血糖', '体重', '体温', '心率', '用药'].find(k => t.includes(k));
+    return { capabilityId: 'query_health_records', args: { member: mentionedMember(t, graph), metric } };
+  }
+  if (/缺什么|还差什么|差哪些食材|补货|照着食谱买|买齐/.test(t) && !/清单|行李|大阪|三亚/.test(t) && isEnabled(graph, 'smart_restock_for_recipes')) {
+    const recipe = graph.findEntities('Recipe').find(r => t.includes(r.label) || t.includes(r.label.replace(/（.*）/, '')));
+    const mealType = MEAL_WORDS.find(([, re]) => re.test(t))?.[0];
+    const autoOrder = /下单|买齐|帮我买|生成订单/.test(t);
+    return { capabilityId: 'smart_restock_for_recipes', args: { recipe: recipe?.label, mealType, autoOrder } };
+  }
+  if (/冰箱|库存|储物柜|家里还有|用掉了|消耗了/.test(t) && isEnabled(graph, 'manage_pantry')) {
+    const items = orderItems(t, graph);
+    const action = /用掉|消耗|吃了|用完/.test(t) ? 'consume' : items.length ? 'set' : 'list';
+    return { capabilityId: 'manage_pantry', args: { action, items } };
+  }
+  if (/(?:视频|教程|B站|bilibili|哔哩哔哩|必应视频|抖音|douyin)/i.test(t) && isEnabled(graph, 'search_video_with_browser')) {
+    return { capabilityId: 'search_video_with_browser', args: extractArgs(graph.getEntity('search_video_with_browser'), t, graph) };
+  }
+  return null;
+}
+
+export function parseHealthRecordCommand(text, graph) {
+  const t = String(text || '').trim();
+  const member = mentionedMember(t, graph) || t.match(/^(爸爸|妈妈|爷爷|奶奶|外公|外婆|小明|小花)/)?.[1];
+  if (!member) return null;
+  // Blood pressure: e.g. "记录爸爸今天血压 135/85" or "爸爸测了血压130/80"
+  let m = t.match(/(?:记录|测了?|量了?|今天|早上|晚上).*?血压\s*[:：为是]?\s*(\d{2,3}\s*[/／]\s*\d{2,3})(?:\s*(mmHg))?/i)
+    || t.match(/^记录.*?血压\s*[:：为是]?\s*(\d{2,3}\s*[/／]\s*\d{2,3})/i);
+  if (m) return { member, metric: '血压', value: m[1].replace(/\s+/g, ''), unit: 'mmHg' };
+  // Blood glucose: e.g. "记录奶奶空腹血糖 6.2"
+  m = t.match(/(?:记录|测了?|量了?|今天|空腹|餐后).*?血糖\s*[:：为是]?\s*(\d+(?:\.\d+)?)/i);
+  if (m) return { member, metric: '血糖', value: m[1], unit: 'mmol/L', note: /空腹/.test(t) ? '空腹' : /餐后/.test(t) ? '餐后' : '' };
+  // Medication check-in: e.g. "爸爸吃过降压药了"
+  m = t.match(/(?:吃了|吃过|服用了|服过)\s*([^\s，。！!了]{2,10}?药)/);
+  if (m) return { member, metric: '用药', value: m[1], unit: '次' };
   return null;
 }
 
@@ -132,6 +206,8 @@ export function extractArgs(capability, text, graph) {
       return { items: findIngredientsInText(graph, text).map(f => f.ingredient.label) };
     case 'place_order':
       return { items: orderItems(text, graph) };
+    case 'search_products_with_browser':
+      return { query: parseJDProductQuery(text, graph), site: 'site_jd' };
     case 'list_trips':
     case 'trip_checklist':
       return { trip: text };
@@ -140,7 +216,44 @@ export function extractArgs(capability, text, graph) {
     case 'list_tasks':
       return { member: mentionedMember(text, graph) };
     case 'complete_task':
-      return { task: text };
+      return { task: text, member: mentionedMember(text, graph) };
+    case 'log_health_record':
+      return parseHealthRecordCommand(text, graph) || { member: mentionedMember(text, graph) || '爸爸', metric: '血压', value: '' };
+    case 'query_health_records':
+      return { member: mentionedMember(text, graph), metric: ['血压', '血糖', '体重', '体温', '心率', '用药'].find(k => text.includes(k)) };
+    case 'manage_pantry': {
+      const items = orderItems(text, graph);
+      return { action: /用掉|消耗|吃了/.test(text) ? 'consume' : items.length ? 'set' : 'list', items };
+    }
+    case 'smart_restock_for_recipes': {
+      const recipe = graph.findEntities('Recipe').find(r => text.includes(r.label));
+      return {
+        recipe: recipe?.label,
+        mealType: MEAL_WORDS.find(([, re]) => re.test(text))?.[0],
+        autoOrder: /下单|买齐|帮我买|生成订单/.test(text),
+      };
+    }
+    case 'search_video_with_browser': {
+      const site = graph.findEntities('BrowserSite').find(s =>
+        text.toLowerCase().includes(s.label.toLowerCase())
+        || (s.synonyms || []).some(syn => text.toLowerCase().includes(syn.toLowerCase())));
+      let cleaned = String(text).trim();
+      // Remove known member prefixes only; greedy \\S+ used to swallow the whole query.
+      cleaned = cleaned.replace(/^(?:请)?(?:帮我|帮忙)?\s*/, '');
+      for (const name of memberNames(graph)) {
+        cleaned = cleaned.replace(new RegExp(`^(?:帮|给|为)?${escapeRe(name)}(?:找|搜)?\\s*`), '');
+      }
+      cleaned = cleaned
+        .replace(/^(?:搜索|搜一下|找一下|查找|找个|找一个|找|看|搜)\s*/, '')
+        .replace(/^(?:在|去|用|到)?\s*(?:B站|bilibili|哔哩哔哩|必应视频|必应|下厨房|抖音|douyin)(?:上)?(?:的)?\s*/i, '')
+        .replace(/^(?:搜索|搜一下|找一下|查找|找个|找一个|找|看|搜)\s*/, '')
+        .trim();
+      return {
+        query: cleaned || text,
+        site: site?.id,
+        member: mentionedMember(text, graph),
+      };
+    }
     case 'add_task':
       return parseTaskSpec(text.replace(/^.*?任务\s*[:：]?/, ''), graph);
     case 'add_health_reminder':

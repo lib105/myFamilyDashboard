@@ -160,3 +160,152 @@ test('family profiles and weather are typed home modules backed by agent capabil
     assert.ok(result.views.some(v => v.type === type && v.auto));
   }
 });
+
+test('Direction A: ontology-driven mutatesClass/readsClass dependency graph triggers dependent capabilities', async () => {
+  const graph = fixture();
+  assert.ok(graph.objects('update_member_profile', 'mutatesClass').includes('class_FamilyMember'));
+  assert.ok(graph.objects('recommend_produce', 'readsClass').includes('class_FamilyMember'));
+  assert.ok(graph.objects('recommend_recipes', 'readsClass').includes('class_FamilyMember'));
+  assert.ok(graph.objects('r_kiwi_yogurt', 'extrasContainAllergen').includes('allergen_milk'));
+
+  // Milk allergy excludes recipes whose dairy allergen comes from extras
+  await handleUserMessage('爸爸对牛奶过敏', { graph });
+  const recipeRes = await executeCapability(graph.getEntity('recommend_recipes'), { member: '爸爸' }, { graph });
+  assert.ok(!recipeRes.reply.includes('猕猴桃酸奶杯'));
+});
+
+test('Direction B: HealthRecord & TaskLog temporal events record observations and performer-accurate scores', async () => {
+  const graph = fixture();
+  graph.addEntity({ id: 'ming', type: 'FamilyMember', name: '小明' });
+  graph.addEntity({ id: 'hua', type: 'FamilyMember', name: '小花' });
+  graph.addTriple('task_task1', 'assignedTo', 'ming');
+  graph.addTriple('task_task1', 'assignedTo', 'hua');
+
+  // Specific performer check-in credits only 小明, not 小花
+  const doneRes = await handleUserMessage('小明完成了整理玩具房间', { graph });
+  assert.match(doneRes.reply, /小明 \+10 积分/);
+  const logs = graph.findEntities('TaskLog');
+  assert.equal(logs.length, 1);
+  assert.deepEqual(graph.objects(logs[0].id, 'completedBy'), ['ming']);
+
+  // HealthRecord observation for blood pressure and medication
+  const bpRes = await handleUserMessage('记录爸爸今天血压 135/85', { graph });
+  assert.match(bpRes.reply, /135\/85/);
+  assert.equal(bpRes.views[0].type, 'health_records');
+  const hrecs = graph.findEntities('HealthRecord');
+  assert.equal(hrecs.length, 1);
+  assert.equal(hrecs[0].metric, '血压');
+  assert.equal(hrecs[0].value, '135/85');
+  assert.deepEqual(graph.objects(hrecs[0].id, 'recordFor'), ['dad']);
+
+  const queryRes = await handleUserMessage('查看爸爸的血压记录', { graph });
+  assert.match(queryRes.reply, /135\/85/);
+});
+
+test('Direction C: PantryItem inventory and smart recipe restock calculate missing ingredients and auto-order', async () => {
+  const graph = fixture();
+  // Base pantry has 鸡蛋 (ing_egg), so 番茄炒蛋 (ing_tomato + ing_egg) is only missing 番茄 (ing_tomato)
+  const restock = await handleUserMessage('做番茄炒蛋还差什么，帮我下单买齐', { graph });
+  assert.match(restock.reply, /缺少：番茄/);
+  assert.ok(restock.views.some(v => v.type === 'order'));
+  assert.ok(restock.views.some(v => v.type === 'pantry'));
+  const order = graph.findEntities('Order')[0];
+  assert.ok(order);
+  assert.deepEqual(graph.objects(order.id, 'orderContains'), ['ing_tomato']);
+
+  // Adding 番茄 to pantry makes 番茄炒蛋 ready to cook without missing ingredients
+  await handleUserMessage('冰箱里还有2个番茄', { graph });
+  const after = await handleUserMessage('做番茄炒蛋还差什么', { graph });
+  assert.match(after.reply, /库存充足|食材已齐全/);
+});
+
+test('Ego-lite Browser Agent: governed sites, real video contract and BrowserTaskRun lineage', async () => {
+  const graph = fixture();
+  // Verify TBox/ABox browser site governance relations
+  const allowedSites = graph.objects('search_video_with_browser', 'usesBrowserSite');
+  assert.deepEqual(new Set(allowedSites), new Set(['site_bilibili', 'site_douyin', 'site_bing_video', 'site_xiachufang']));
+
+  // Simulate server-side ego-lite bridge returning real extracted Bilibili video URLs
+  globalThis.fetch = async (url, options) => {
+    if (url === '/api/ego-browser/search-video') {
+      const body = JSON.parse(options.body);
+      assert.equal(body.siteId, 'site_bilibili');
+      assert.match(body.query, /番茄炒蛋/);
+      assert.equal(body.searchUrl, undefined);
+      return {
+        ok: true,
+        json: async () => ({
+          bestTitle: '【保姆级教程】家常番茄炒蛋，鲜嫩多汁秘诀',
+          bestUrl: 'https://www.bilibili.com/video/BV1xx411c7mD',
+          candidates: [
+            { title: '【保姆级教程】家常番茄炒蛋，鲜嫩多汁秘诀', url: 'https://www.bilibili.com/video/BV1xx411c7mD' },
+            { title: '大厨教你西红柿炒鸡蛋', url: 'https://www.bilibili.com/video/BV1yy411c7mE' },
+          ],
+          engine: 'ego-browser-live',
+        }),
+      };
+    }
+    throw new Error('unexpected fetch');
+  };
+
+  const res = await handleUserMessage('帮爸爸在B站搜索番茄炒蛋的做法视频', { graph });
+  assert.match(res.reply, /BV1xx411c7mD/);
+  assert.equal(res.views[0].type, 'video_search');
+
+  const runs = graph.findEntities('BrowserTaskRun');
+  assert.equal(runs.length, 1);
+  assert.equal(runs[0].bestUrl, 'https://www.bilibili.com/video/BV1xx411c7mD');
+  assert.equal(runs[0].engine, 'ego-browser-live');
+  assert.deepEqual(graph.objects(runs[0].id, 'executedByAgent'), ['agent_video']);
+  assert.deepEqual(graph.objects(runs[0].id, 'targetsSite'), ['site_bilibili']);
+  assert.deepEqual(graph.objects(runs[0].id, 'requestedFor'), ['dad']);
+});
+
+test('Douyin requests use the authorized site with cleaned keywords, including with AI configured', async () => {
+  const graph = fixture();
+  plan([], graph);
+  let requests = 0;
+  const url = 'https://www.douyin.com/video/7574037689771593006';
+  globalThis.fetch = async (endpoint, options) => {
+    assert.equal(endpoint, '/api/ego-browser/search-video');
+    const body = JSON.parse(options.body);
+    assert.equal(body.siteId, 'site_douyin');
+    assert.equal(body.query, '八段锦教学视频');
+    requests++;
+    return { ok: true, json: async () => ({ engine: 'ego-browser-live', candidates: [{ title: '八段锦跟练', url }] }) };
+  };
+  for (const text of ['在抖音搜索八段锦教学视频', '帮爸爸去抖音上找八段锦教学视频', '在 Douyin 找八段锦教学视频', '搜索抖音上的八段锦教学视频']) {
+    const result = await handleUserMessage(text, { graph });
+    assert.match(result.reply, /7574037689771593006/);
+    const run = graph.getEntity(result.views[0].args.runId);
+    assert.equal(run.status, 'succeeded');
+    assert.deepEqual(graph.objects(run.id, 'targetsSite'), ['site_douyin']);
+  }
+  assert.equal(requests, 4);
+});
+
+test('video search executes the bridge with AI configured, even when the model would refuse tools', async () => {
+  const graph = fixture();
+  plan([], graph);
+  let bridgeCalls = 0;
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, '/api/ego-browser/search-video', 'explicit video intent must not ask the LLM for permission');
+    const body = JSON.parse(options.body);
+    assert.match(body.query, /八段锦/);
+    bridgeCalls++;
+    return { ok: true, json: async () => ({
+      candidates: [{ title: '八段锦完整教学', url: 'https://www.bilibili.com/video/BV1gT4y1m7ec/' }],
+      engine: 'ego-browser-live',
+    }) };
+  };
+  for (const text of ['帮爸爸在B站搜索八段锦教学视频', '在b站找八段锦教学视频', '搜索八段锦的视频']) {
+    const result = await handleUserMessage(text, { graph });
+    assert.match(result.reply, /BV1gT4y1m7ec/);
+    assert.doesNotMatch(result.reply, /没有浏览器工具|无法调用服务端/);
+  }
+  assert.equal(bridgeCalls, 3);
+  graph.updateEntity('search_video_with_browser', { enabled: false });
+  delete globalThis.window;
+  await handleUserMessage('搜索八段锦视频', { graph });
+  assert.equal(bridgeCalls, 3, 'disabled capability must not execute');
+});

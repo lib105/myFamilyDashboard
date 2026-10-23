@@ -46,7 +46,9 @@ export function recommendIngredients(graph, { month = currentMonth(), category =
   for (const ingredient of getIngredients(graph)) {
     if (category && category !== 'all' && ingredient.category !== category) continue;
     const facts = getIngredientFacts(graph, ingredient);
-    const inSeason = (ingredient.months || []).includes(month);
+    const inSeason = facts.seasons.length > 0
+      ? facts.seasons.some(s => (s.months || []).includes(month))
+      : (ingredient.months || []).includes(month);
     const benefitIds = new Set(facts.benefits.map(c => c.id));
     const cautionIds = new Set(facts.cautions.map(c => c.id));
     const allergenIds = new Set(facts.allergens.map(a => a.id));
@@ -104,6 +106,19 @@ export function recommendRecipes(graph, { month = currentMonth(), mealType, memb
       if (ingredientIds.some(id => excludedIds.has(id))) {
         excludedRecipes.push({ recipe, reason: reasons.join('；') });
         return null;
+      }
+      // Check recipe extras for allergens via Recipe -extrasContainAllergen-> Allergen
+      const extraAllergenIds = new Set(graph.objects(recipe.id, 'extrasContainAllergen'));
+      if (extraAllergenIds.size) {
+        const extraAllergicMembers = profiles.filter(p => p.allergens.some(a => extraAllergenIds.has(a.id)));
+        if (extraAllergicMembers.length) {
+          excludedRecipes.push({
+            recipe,
+            reason: extraAllergicMembers.map(p =>
+              `辅料含${p.allergens.filter(a => extraAllergenIds.has(a.id)).map(a => a.label).join('、')}（${p.member.name}过敏）`).join('；'),
+          });
+          return null;
+        }
       }
       // Unlinked ingredients and unclassified extras cannot be certified for a restricted diet.
       const unknown = !ingredientIds.length || ingredientIds.some(id => !byId.has(id));

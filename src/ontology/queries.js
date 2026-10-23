@@ -145,6 +145,22 @@ export function getIngredientFacts(graph, ingredient) {
   };
 }
 
+/** Whether a Capability declares `mutatesClass` relations in the ontology. */
+export function isMutatingCapability(graph, capabilityId) {
+  return graph.objects(capabilityId, 'mutatesClass').length > 0;
+}
+
+/**
+ * Returns enabled Capabilities whose `readsClass` intersects with the given
+ * `mutatedClassIds` and that opt in to `autoRefreshOnMutation`.
+ */
+export function getDependentCapabilities(graph, mutatedClassIds = []) {
+  const targets = new Set(mutatedClassIds);
+  if (!targets.size) return [];
+  return getCapabilities(graph, { enabledOnly: true }).filter(c =>
+    c.autoRefreshOnMutation && graph.objects(c.id, 'readsClass').some(clsId => targets.has(clsId)));
+}
+
 /** Finds every ingredient mentioned in free text (longest labels first). */
 export function findIngredientsInText(graph, text) {
   const found = [];

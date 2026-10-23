@@ -1,12 +1,13 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
+import { VideoLink } from './VideoPlayer.jsx';
 
 // Agent replies use single newlines as line breaks, so keep them (remark-breaks).
 const PLUGINS = [remarkGfm, remarkBreaks];
 
 const COMPONENTS = {
-  a: ({ href, title, children }) => <a href={href} title={title} target="_blank" rel="noopener noreferrer">{children}</a>,
+  a: ({ href, title, children }) => <VideoLink href={href} title={title} target="_blank" rel="noopener noreferrer">{children}</VideoLink>,
   table: ({ children }) => <div className="table-wrap"><table className="data-table">{children}</table></div>,
 };
 

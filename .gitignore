@@ -4,6 +4,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Private runtime price screenshots (never publish as static public assets)
+data/price-evidence/
+
+# Vendor CLI may contain embedded credentials; provision privately on each server.
+server/lib/flyai-bundle.cjs
+
 # Build output
 dist/
 dist-ssr/

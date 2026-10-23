@@ -3,11 +3,16 @@ import { useGraph } from '../../ontology/index.js';
 import { INGREDIENT_CATEGORIES } from '../../ontology/schema.js';
 import { getIngredientFacts, getFamilyProfiles, getAgents, getCapabilities } from '../../ontology/queries.js';
 import { recommendIngredients, recommendRecipes } from '../../agents/recommender.js';
-import { confirmOrder, cancelOrder } from '../../agents/capabilities.js';
-import { TripsView, TasksView, HealthView, RemindersView } from './FamilyViews.jsx';
+import { confirmOrder, cancelOrder, getPantryItems, upsertPantryStock, computeRecipeRestock } from '../../agents/capabilities.js';
+import { getBrowserTaskRuns } from '../../agents/browserAgent.js';
+import { TripsView, TasksView, HealthView, RemindersView, HealthRecordsView } from './FamilyViews.jsx';
 import ProfilesView from './ProfilesView.jsx';
 import WeatherView from './WeatherView.jsx';
+import ProductSearchView from './ProductSearchView.jsx';
+import ShoppingComparisonView from './ShoppingComparisonView.jsx';
+import FliggyTravelView from './FliggyTravelView.jsx';
 import Markdown from '../common/Markdown.jsx';
+import { VideoLink } from '../common/VideoPlayer.jsx';
 
 const VIEW_META = {
   weather:         { emoji: '🌤️', color: '#5DADE2' },
@@ -24,6 +29,12 @@ const VIEW_META = {
   tasks:           { emoji: '✅', color: '#27AE60' },
   health:          { emoji: '💗', color: '#E91E8C' },
   reminders:       { emoji: '⏰', color: '#E74C3C' },
+  health_records:  { emoji: '📒', color: '#8E44AD' },
+  pantry:          { emoji: '🧊', color: '#16A085' },
+  video_search:    { emoji: '🎬', color: '#E67E22' },
+  product_search:  { emoji: '🛒', color: '#E74C3C' },
+  shopping_comparison: { emoji: '🛍️', color: '#E74C3C' },
+  fliggy_travel:   { emoji: '🕊️', color: '#FF6A00' },
   text:            { emoji: '🧩', color: '#7F8C8D' },
 };
 
@@ -183,42 +194,8 @@ function IngredientInfoView({ args = {} }) {
   );
 }
 
-function PricesView({ args = {} }) {
-  const graph = useGraph();
-  const stores = graph.findEntities('Store');
-  const rows = (args.ingredientIds || []).map(id => graph.getEntity(id)).filter(Boolean).map(ing => {
-    const offers = Object.fromEntries(graph.subjects('offerOf', ing.id).map(oid => [graph.objects(oid, 'soldAt')[0], graph.getEntity(oid)]));
-    const min = Math.min(...Object.values(offers).map(o => o.price));
-    return { ing, offers, min };
-  });
-  return (
-    <div className="table-wrap">
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>食材</th>
-            {stores.map(s => <th key={s.id}>{s.emoji} {s.label}<div className="text-xs text-muted">{s.distanceKm}km · {s.delivery}</div></th>)}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(({ ing, offers, min }) => (
-            <tr key={ing.id}>
-              <td>{ing.emoji} {ing.label}</td>
-              {stores.map(s => {
-                const o = offers[s.id];
-                return (
-                  <td key={s.id} className={o?.price === min ? 'cheapest' : ''}>
-                    {o ? `¥${o.price}/${o.unit}` : '—'}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="text-xs text-muted mt-sm">价格为本地模拟数据，绿色为最低价。</div>
-    </div>
-  );
+function PricesView() {
+  return <p className="text-sm text-muted" role="status">历史商超报价未核验，已停止展示为实时价格；这些旧记录没有可验证的来源截图。请在对话中明确搜索京东商品，或等待真实门店报价通道核验后再比较。</p>;
 }
 
 function DiscountsView({ args = {} }) {
@@ -247,11 +224,15 @@ function OrderView({ args = {} }) {
   const graph = useGraph();
   const order = graph.getEntity(args.orderId);
   if (!order) return <div className="text-muted">订单不存在或已被清除</div>;
+  const storeId = graph.objects(order.id, 'orderedFrom')[0];
+  const store = storeId ? graph.getEntity(storeId) : null;
+  const storeLabel = store?.label || order.storeLabel;
+  const delivery = store?.delivery || order.delivery;
   const statusClass = order.status === '待确认' ? 'badge-warning' : order.status === '已下单' ? 'badge-success' : 'badge-gray';
   return (
     <div>
       <div className="flex items-center justify-between mb-sm">
-        <div className="text-sm">🏪 {order.storeLabel} · {order.delivery}</div>
+        <div className="text-sm">🏪 {storeLabel} · {delivery}</div>
         <span className={`badge ${statusClass}`}>{order.status}</span>
       </div>
       <table className="data-table">
@@ -329,6 +310,144 @@ function CapabilitiesView() {
   );
 }
 
+function PantryView({ args = {}, onAsk }) {
+  const graph = useGraph();
+  const stocks = getPantryItems(graph);
+  const { plans, missingIngredients } = computeRecipeRestock(graph, {
+    recipeQuery: args.recipe,
+    mealType: args.mealType,
+  });
+  return (
+    <div className="flex-col gap-md">
+      <div>
+        <div className="group-title">🧊 现有食材库存（{stocks.length} 项）</div>
+        {stocks.length === 0 ? (
+          <div className="text-sm text-muted">冰箱还没有记录食材，可在右侧说“冰箱里还有2个西红柿和1盒豆腐”。</div>
+        ) : (
+          <div className="chip-row">
+            {stocks.map(({ item, ingredient }) => (
+              <span key={item.id} className="mini-chip good">
+                {ingredient.emoji} {ingredient.label} · {item.quantity}{item.unit || '份'}
+                <button
+                  type="button"
+                  className="chip-x"
+                  title="消耗 1 份"
+                  aria-label={`消耗${ingredient.label}`}
+                  onClick={() => upsertPantryStock(graph, ingredient.id, { quantity: 1, mode: 'consume' })}
+                >
+                  −1
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+      {plans.length > 0 && (
+        <div>
+          <div className="group-title">🍳 推荐食谱缺料对照</div>
+          <div className="flex-col gap-sm">
+            {plans.map(({ recipe, have, missing }) => (
+              <div key={recipe.id} className="produce-card">
+                <div className="flex items-center justify-between mb-sm">
+                  <div className="font-bold text-sm">{recipe.emoji} {recipe.label}</div>
+                  {missing.length === 0
+                    ? <span className="badge badge-success">食材已齐</span>
+                    : <span className="badge badge-warning">缺 {missing.length} 项</span>}
+                </div>
+                <div className="chip-row">
+                  {have.map(i => <span key={i.id} className="mini-chip good">✅ {i.label}</span>)}
+                  {missing.map(i => <span key={i.id} className="mini-chip warn">🛒 缺 {i.label}</span>)}
+                </div>
+              </div>
+            ))}
+          </div>
+          {missingIngredients.length > 0 && onAsk && (
+            <button
+              type="button"
+              className="btn btn-primary btn-sm mt-sm"
+              onClick={() => onAsk(`帮我买${missingIngredients.map(i => `1份${i.label}`).join('、')}`)}
+            >
+              🛒 一键填入所缺食材（{missingIngredients.map(i => i.label).join('、')}）
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VideoSearchView({ args = {} }) {
+  const graph = useGraph();
+  const runs = getBrowserTaskRuns(graph, { kind: 'video_search' });
+  const current = (args.runId && graph.getEntity(args.runId)) || runs[0];
+  if (!current) {
+    return <div className="text-sm text-muted">暂无视频搜索记录，可在右侧说“搜索番茄炒蛋的做法视频”或“在B站找八段锦教学视频”。</div>;
+  }
+  if (current.status === 'failed') {
+    return (
+      <div className="alert alert-danger" role="alert">
+        视频搜索失败：{current.error || '服务端浏览器未就绪'}。请检查服务器的 /api/ego-browser/health，修复后重新搜索。
+      </div>
+    );
+  }
+  if (current.status === 'running') return <div role="status">正在通过服务端 ego-lite 搜索视频…</div>;
+  const siteId = graph.objects(current.id, 'targetsSite')[0];
+  const site = siteId ? graph.getEntity(siteId) : null;
+  const agentId = graph.objects(current.id, 'executedByAgent')[0];
+  const agent = agentId ? graph.getEntity(agentId) : null;
+  const memberId = graph.objects(current.id, 'requestedFor')[0];
+  const member = memberId ? graph.getEntity(memberId) : null;
+  return (
+    <div className="flex-col gap-md">
+      <div className="produce-card">
+        <div className="flex items-center justify-between mb-sm" style={{ flexWrap: 'wrap', gap: 6 }}>
+          <div className="font-bold">{site?.emoji || '🎬'} 关键词：{current.query}</div>
+          <div className="chip-row">
+            {site && <span className="badge badge-secondary">{site.label}</span>}
+            <span className={`badge ${current.engine === 'ego-browser-live' ? 'badge-success' : 'badge-gray'}`}>
+              {current.engine === 'ego-browser-live' ? '🌐 ego-lite 实时检索' : '🧭 站点直达'}
+            </span>
+            {member && <span className="badge badge-purple">{member.avatar} {member.name}</span>}
+          </div>
+        </div>
+        <div className="text-sm mb-sm">
+          <b>首选结果（网站搜索排序）：</b>
+          <VideoLink href={current.bestUrl} videoTitle={current.bestTitle} target="_blank" rel="noopener noreferrer" className="font-bold">
+            {current.bestTitle || current.bestUrl} · 播放
+          </VideoLink>
+        </div>
+        {(current.candidates || []).length > 1 && (
+          <div>
+            <div className="text-xs text-muted mb-sm">候选视频列表：</div>
+            <ul className="recipe-steps" style={{ listStyle: 'decimal' }}>
+              {current.candidates.map((c, idx) => (
+                <li key={idx}>
+                  <VideoLink href={c.url} videoTitle={c.title} target="_blank" rel="noopener noreferrer">{c.title || c.url}</VideoLink>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <div className="text-xs text-muted mt-sm">
+          按网站搜索顺序选取，未核实内容质量。\n          本体溯源：{agent?.label || 'Agent'} —executedByAgent← {current.id} —targetsSite→ {site?.label || siteId}
+        </div>
+      </div>
+      {runs.length > 1 && (
+        <div>
+          <div className="group-title">🕓 最近浏览器检索记录（{runs.length}）</div>
+          <div className="chip-row">
+            {runs.filter(r => r.status === 'succeeded' && r.bestUrl).slice(0, 5).map(r => (
+              <VideoLink key={r.id} href={r.bestUrl} videoTitle={r.bestTitle || r.query} target="_blank" rel="noopener noreferrer" className="mini-chip link">
+                🎬 {r.query} · 播放
+              </VideoLink>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TextView({ view }) {
   return <Markdown className="text-sm" text={view.data?.text} />;
 }
@@ -348,6 +467,12 @@ const RENDERERS = {
   tasks: TasksView,
   health: HealthView,
   reminders: RemindersView,
+  health_records: HealthRecordsView,
+  pantry: PantryView,
+  video_search: VideoSearchView,
+  product_search: ProductSearchView,
+  shopping_comparison: ShoppingComparisonView,
+  fliggy_travel: FliggyTravelView,
   text: TextView,
 };
 

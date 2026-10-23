@@ -24,6 +24,6 @@ export function resetKnowledge({ withDemo = true } = {}) {
 
 /** Subscribes a component to graph changes and returns the graph. */
 export function useGraph() {
-  useSyncExternalStore(graph.subscribe, graph.getVersion);
+  useSyncExternalStore(graph.subscribe, graph.getVersion, graph.getVersion);
   return graph;
 }

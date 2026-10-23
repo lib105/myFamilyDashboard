@@ -1,16 +1,60 @@
 {
   "food_plant": [
-    "apple", "pear", "kiwi", "orange", "pomelo", "grape", "persimmon",
-    "strawberry", "cherry", "watermelon", "mango", "banana", "broccoli",
-    "spinach", "chinese_cabbage", "white_radish", "carrot", "pumpkin",
-    "sweet_potato", "yam", "lotus_root", "tomato", "celery", "cucumber",
-    "oats", "millet", "tofu", "walnut", "chestnut", "peanut"
+    "apple",
+    "pear",
+    "kiwi",
+    "orange",
+    "pomelo",
+    "grape",
+    "persimmon",
+    "strawberry",
+    "cherry",
+    "watermelon",
+    "mango",
+    "banana",
+    "broccoli",
+    "spinach",
+    "chinese_cabbage",
+    "white_radish",
+    "carrot",
+    "pumpkin",
+    "sweet_potato",
+    "yam",
+    "lotus_root",
+    "tomato",
+    "celery",
+    "cucumber",
+    "oats",
+    "millet",
+    "tofu",
+    "walnut",
+    "chestnut",
+    "peanut",
+    "jasmine_tea",
+    "碧螺春",
+    "、",
+    "羊肉"
   ],
-  "food_fungus": ["shiitake", "black_fungus"],
-  "food_meat": ["chicken_breast", "beef"],
-  "food_fish": ["salmon"],
-  "food_seafood": ["shrimp", "crab"],
-  "food_egg": ["egg"],
-  "food_dairy": ["milk"],
+  "food_fungus": [
+    "shiitake",
+    "black_fungus"
+  ],
+  "food_meat": [
+    "chicken_breast",
+    "beef"
+  ],
+  "food_fish": [
+    "salmon"
+  ],
+  "food_seafood": [
+    "shrimp",
+    "crab"
+  ],
+  "food_egg": [
+    "egg"
+  ],
+  "food_dairy": [
+    "milk"
+  ],
   "food_animal_other": []
 }

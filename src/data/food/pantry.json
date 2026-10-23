@@ -1,0 +1,6 @@
+[
+  { "id": "pantry_egg", "ingredientId": "egg", "quantity": 6, "unit": "个", "location": "冰箱冷藏" },
+  { "id": "pantry_millet", "ingredientId": "millet", "quantity": 2, "unit": "斤", "location": "厨房储物柜" },
+  { "id": "pantry_oats", "ingredientId": "oats", "quantity": 1, "unit": "盒", "location": "厨房储物柜" },
+  { "id": "pantry_carrot", "ingredientId": "carrot", "quantity": 2, "unit": "斤", "location": "冰箱果蔬盒" }
+]

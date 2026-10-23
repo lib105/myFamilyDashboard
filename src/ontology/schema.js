@@ -10,6 +10,7 @@
 export const LITERAL = 'Literal';
 
 export const CLASSES = {
+  OntologyClass:   { label: '本体类元实体', description: 'TBox 中的类，用于声明 Agent 能力读写的领域边界' },
   FamilyMember:    { label: '家庭成员',   description: '家庭中的一个人，可拥有任意属性' },
   HealthCondition: { label: '健康状况',   description: '疾病或身体状况，如高血压、糖尿病' },
   Allergen:        { label: '过敏原',     description: '可能引起过敏的物质' },
@@ -24,7 +25,13 @@ export const CLASSES = {
   Shipment:        { label: '物流单',     description: '快递/配送信息' },
   Trip:            { label: '旅行计划',   description: '家庭出行计划，含预算、行前清单与心愿' },
   Task:            { label: '家庭任务',   description: '家务/学习等周期性任务，完成可获得积分' },
+  TaskLog:         { label: '任务打卡记录', description: '某次任务完成的事件实体，记录完成时间、积分与实际执行人' },
   HealthReminder:  { label: '健康提醒',   description: '用药、体检、疫苗、复查等健康提醒' },
+  HealthRecord:    { label: '健康监测记录', description: '某次血压、血糖、体重、体温或服药的时序观测实体' },
+  PantryItem:      { label: '家庭库存项', description: '冰箱/储物柜中某食材的现有库存量与单位' },
+  BrowserSite:     { label: '浏览器目标站点', description: '服务端 ego-lite 浏览器允许访问的受控站点与搜索/提取规则' },
+  ShoppingRequest: { label: '采购需求', description: '一次采购对话确认的品类、品牌、规格、预算、平台偏好与生命周期状态；不是订单' },
+  BrowserTaskRun:  { label: '浏览器执行记录', description: 'Agent 调用服务端 ego-lite 浏览器执行真实网页操作并提取结果的事件记录' },
   Agent:           { label: 'AI Agent',   description: '承担某一类职责的智能体' },
   Capability:      { label: '能力',       description: 'Agent 可被调用的一项能力（工具）' },
 };
@@ -38,6 +45,7 @@ export const RELATIONS = {
   containsAllergen: { label: '含过敏原',     domain: 'Ingredient',   range: 'Allergen' },
   derivedFrom:      { label: '来源于',       domain: 'Ingredient',   range: 'FoodSource' },
   extrasDerivedFrom: { label: '辅料来源于',   domain: 'Recipe',       range: 'FoodSource' },
+  extrasContainAllergen: { label: '辅料含过敏原', domain: 'Recipe',   range: 'Allergen' },
   availableIn:      { label: '当季于',       domain: 'Ingredient',   range: 'Season' },
   usesIngredient:   { label: '使用食材',     domain: 'Recipe',       range: 'Ingredient' },
   offerOf:          { label: '报价食材',     domain: 'PriceOffer',   range: 'Ingredient' },
@@ -47,8 +55,19 @@ export const RELATIONS = {
   orderContains:    { label: '包含食材',     domain: 'Order',        range: 'Ingredient' },
   shipmentOf:       { label: '配送订单',     domain: 'Shipment',     range: 'Order' },
   assignedTo:       { label: '分配给',       domain: 'Task',         range: 'FamilyMember' },
+  logOfTask:        { label: '打卡任务',     domain: 'TaskLog',      range: 'Task' },
+  completedBy:      { label: '完成人',       domain: 'TaskLog',      range: 'FamilyMember' },
   reminderFor:      { label: '提醒对象',     domain: 'HealthReminder', range: 'FamilyMember' },
+  recordFor:        { label: '监测成员',     domain: 'HealthRecord', range: 'FamilyMember' },
+  stocksIngredient: { label: '库存食材',     domain: 'PantryItem',   range: 'Ingredient' },
+  usesBrowserSite:  { label: '允许访问站点', domain: 'Capability',   range: 'BrowserSite' },
+  executedByAgent:  { label: '执行智能体',   domain: 'BrowserTaskRun', range: 'Agent' },
+  targetsSite:      { label: '访问目标站点', domain: 'BrowserTaskRun', range: 'BrowserSite' },
+  requestedFor:     { label: '关联家庭成员', domain: 'BrowserTaskRun', range: 'FamilyMember' },
+  fulfillsShoppingRequest: { label: '响应采购需求', domain: 'BrowserTaskRun', range: 'ShoppingRequest' },
   providedBy:       { label: '由…提供',      domain: 'Capability',   range: 'Agent' },
+  mutatesClass:     { label: '修改本体类',   domain: 'Capability',   range: 'OntologyClass' },
+  readsClass:       { label: '读取本体类',   domain: 'Capability',   range: 'OntologyClass' },
 };
 
 export const SEASONS = [

@@ -1072,6 +1072,149 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .modal-actions { margin-top: var(--spacing-md); display: flex; justify-content: center; }
 @keyframes modal-fade { from { opacity: 0; } to { opacity: 1; } }
 
+/* Shopping clarification stays in the conversation; options are comfortably tappable. */
+.shopping-followup { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.shopping-option { min-height: 44px; padding: 8px 12px; background: #fff; color: #263947; border: 1px solid #ccd5db; border-radius: 8px; font-size: 14px; }
+.shopping-option:hover:not(:disabled) { background: #eaf2fa; border-color: #4a90d9; }
+.shopping-option:focus-visible { outline: 3px solid #2563a6; outline-offset: 2px; }
+.shopping-option:disabled { color: #677581; background: #f4f6f7; cursor: default; }
+@media (max-width: 1100px) {
+  /* The composer is fixed outside layout flow; keep the newest options above it. */
+  .chat-panel .chat-messages { padding-bottom: 112px; }
+}
+.shopping-requirements { padding: 10px 12px; background: #f4f6f7; border-radius: 8px; margin-bottom: 8px; }
+.shopping-requirements h3 { font-size: 14px; margin-bottom: 4px; }
+.shopping-sources { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.shopping-source { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
+.shopping-comparison-table { min-width: 680px; }
+.shopping-comparison-table td { max-width: 240px; overflow-wrap: anywhere; }
+.shopping-comparison-table a { text-decoration: underline; }
+
+/* Procurement is a ledger, not a stack of cards: 44px proof + flexible identity + 132px price + 2 × 12px gaps. */
+.jd-search-meta { display: flex; justify-content: space-between; align-items: start; gap: 8px 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.jd-products { --jd-muted: #5f6b75; container: procurement / inline-size; display: flex; flex-direction: column; gap: 0; padding: 0; margin: 0; list-style: none; }
+.jd-product { display: grid; grid-template-columns: 44px minmax(0, 1fr) 132px; align-items: start; gap: 4px 12px; padding: 10px 0; border-bottom: 1px solid var(--color-border); }
+.jd-product-info { min-width: 0; }
+.jd-product-info h3 { margin: 0; font-size: 14px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.jd-product-info h3 a { color: var(--color-text); text-decoration: none; }
+.jd-product-info h3 a:hover { color: var(--color-secondary); text-decoration: underline; }
+.jd-product-info h3 a:focus-visible { outline: 2px solid var(--color-secondary); outline-offset: 2px; }
+.jd-product-shop { display: flex; flex-wrap: wrap; gap: 0 8px; color: var(--jd-muted); }
+.jd-product-shop, .jd-product-promotions, .jd-product-check { margin: 2px 0 0; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.jd-product-promotions, .jd-product-check.text-muted { color: var(--jd-muted); }
+.jd-product-check.text-danger { color: #b42318; }
+.jd-product-price { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; min-width: 0; text-align: right; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.jd-product-price strong { font-size: 18px; line-height: 1.35; color: var(--color-text); }
+.jd-product-price-label, .jd-product-reference { font-size: 12px; line-height: 1.5; color: var(--jd-muted, #5f6b75); }
+.jd-product-price-note { font-size: 12px; line-height: 1.5; color: #92400e; }
+.jd-product-price.compact { align-items: flex-start; max-width: 220px; }
+.jd-product-price.compact strong { font-size: 16px; }
+.jd-product-price a { text-decoration: underline; }
+/* Use the card's width, not the viewport: desktop dashboard cards can also be narrow. */
+@container procurement (max-width: 440px) {
+  .jd-product { grid-template-columns: 44px minmax(0, 1fr); column-gap: 8px; }
+  .jd-product-price { grid-column: 2; flex-direction: row; align-items: baseline; justify-content: flex-start; flex-wrap: wrap; gap: 2px 8px; text-align: left; }
+  .jd-product-price-label { width: 100%; }
+  .jd-product-price strong { font-size: 16px; }
+}
+
+/* Video player: a native top-layer dialog, separate from the dashboard's card layout. */
+.video-player-dialog {
+  width: min(900px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  border: none;
+  border-radius: 16px;
+  background: #fff;
+  color: var(--color-text);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.video-player-dialog::backdrop { background: rgba(15, 23, 32, 0.68); }
+.video-player-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+}
+.video-player-header h2 {
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.video-player-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 80px;
+  min-height: 44px;
+  flex-shrink: 0;
+  border: 1px solid #d6dce1;
+  border-radius: 8px;
+  background: #f4f6f7;
+  color: #243746;
+  font-size: 14px;
+}
+.video-player-close span { font-size: 22px; line-height: 1; }
+.video-player-close:hover { background: #e7ecef; }
+.video-player-dialog :focus-visible { outline: 3px solid #2563a6; outline-offset: 3px; }
+.video-player-stage { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; }
+.video-player-stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+.video-player-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: #f4f6f7;
+  color: #495865;
+  font-size: 14px;
+}
+.video-player-footer p { flex: 1 1 280px; }
+.video-player-footer a { color: #185995; text-decoration: underline; padding: 8px 0; }
+.video-player-unavailable { padding: 48px 20px; background: #f4f6f7; text-align: center; }
+.video-player-unavailable p + p { margin-top: 8px; }
+@media (max-width: 480px) {
+  .video-player-dialog { width: calc(100vw - 16px); max-height: calc(100dvh - 16px); border-radius: 12px; }
+  .video-player-header { gap: 8px; padding: 10px 12px; }
+  .video-player-footer { padding: 10px 12px; }
+}
+
+/* Price provenance: compact thumbnail, native top-layer verification dialog. */
+.price-evidence { min-width: 0; }
+.price-evidence-thumb { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 5px; border: 1px solid #ccd5db; border-radius: 6px; background: #fff; color: #243746; cursor: zoom-in; }
+.price-evidence-thumb img { display: block; width: 32px; height: 32px; object-fit: contain; background: #f4f6f7; }
+.price-evidence-unavailable, .price-evidence-error { font-size: 12px; line-height: 1.5; color: var(--jd-muted, #5f6b75); }
+.price-evidence-unavailable { display: inline-flex; align-items: center; justify-content: center; width: 44px; min-height: 44px; }
+.price-evidence-thumb:hover { border-color: #185995; }
+.price-evidence :focus-visible { outline: 3px solid #185995; outline-offset: 3px; }
+.price-evidence-dialog { width: min(1000px, calc(100vw - 32px)); max-width: none; max-height: calc(100dvh - 32px); margin: auto; padding: 0; border: 1px solid #ccd5db; border-radius: 8px; background: #fff; color: #243746; overflow: auto; }
+.price-evidence-dialog::backdrop { background: rgba(15, 23, 32, 0.7); }
+.price-evidence-header { display: flex; justify-content: space-between; align-items: start; gap: 16px; padding: 16px; }
+.price-evidence-header h3 { font-size: 16px; line-height: 1.5; overflow-wrap: anywhere; }
+.price-evidence-header button { flex-shrink: 0; min-height: 44px; }
+.price-evidence-details { padding: 0 16px 16px; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.price-evidence-details a { color: #185995; text-decoration: underline; }
+.price-evidence-image { background: #f4f6f7; padding: 16px; overflow: auto; }
+.price-evidence-image img { display: block; width: auto; max-width: 100%; height: auto; margin: auto; }
+@media (max-width: 480px) {
+  .price-evidence-dialog { width: calc(100vw - 16px); max-height: calc(100dvh - 16px); }
+  .price-evidence-header { padding: 12px; gap: 8px; }
+  .price-evidence-details, .price-evidence-image { padding: 12px; }
+}
+
 /* Agent center & settings */
 .agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--spacing-lg); margin-top: var(--spacing-md); }
 .capability-row { display: flex; gap: var(--spacing-sm); padding: var(--spacing-sm); background: #FFF9F0; border-radius: var(--radius-md); }

@@ -19,16 +19,20 @@ const MAX_SUGGESTIONS = 10;
 const WELCOME = {
   role: 'assistant',
   welcome: true,
-  text: '你好！我是家庭助手 🏡\n告诉我家人的健康情况，我会结合当季食材推荐吃什么、怎么做；还可以管理旅行计划、健康提醒和家庭任务，比价、下单和查快递也没问题。',
+  text: '你好！我是家庭助手 🏡\n告诉我家人的健康情况，我会结合当季食材推荐吃什么、怎么做；还可以管理旅行计划、健康提醒和家庭任务；采购确认规格预算后查京东，价格结果可点击来源截图核对；三家商超真实报价尚待核验，不返回旧缓存当实价；不会自动购买。',
 };
 
 export default function ChatPanel({ draft, setDraft, onResult, onFocusAnswer, inputRef }) {
   const graph = useGraph();
   const [messages, setMessages] = useState(() => {
     const saved = loadMessages();
-    return saved.length ? saved : [WELCOME];
+    return saved.length ? saved.map(message => message.welcome ? WELCOME : message) : [WELCOME];
   });
   const [busy, setBusy] = useState(false);
+  const [shoppingRequestId, setShoppingRequestId] = useState(() => {
+    const saved = [...loadMessages()].reverse().find(m => Object.hasOwn(m, 'shoppingRequestId'))?.shoppingRequestId;
+    return saved && graph.getEntity(saved)?.status === 'collecting' ? saved : null;
+  });
   const listRef = useRef(null);
   const settings = loadAISettings();
   const aiOn = isAIConfigured(settings);
@@ -37,31 +41,42 @@ export default function ChatPanel({ draft, setDraft, onResult, onFocusAnswer, in
 
   useEffect(() => {
     saveMessages(messages);
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
+    const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior });
+    if (messages.at(-1)?.followUp && window.matchMedia('(max-width: 1100px)').matches) {
+      // Center the panel above the fixed mobile composer; bottom-alignment can
+      // leave the newest options under that composer and impossible to click.
+      listRef.current?.closest('.chat-panel')?.scrollIntoView({ behavior, block: 'center' });
+    }
   }, [messages]);
 
   const send = async (text) => {
     const content = text.trim();
     if (!content || busy) return;
     setDraft('');
-    const history = messages.filter(m => !m.welcome).map(m => ({ role: m.role, text: m.fullText || m.text }));
-    setMessages(prev => [...prev, { role: 'user', text: content }]);
+    const history = messages.filter(m => !m.welcome).map(m => ({ role: m.role, text: m.fullText || m.text,
+      ...(Object.hasOwn(m, 'fliggyContext') ? { fliggyContext: m.fliggyContext } : {}) }));
+    setMessages(prev => [...prev, { role: 'user', text: content, shoppingRequestId }]);
     setBusy(true);
     try {
-      const result = await handleUserMessage(content, { graph, history });
+      const result = await handleUserMessage(content, { graph, history, shoppingRequestId });
+      const nextRequestId = Object.hasOwn(result, 'shoppingRequestId') ? result.shoppingRequestId : shoppingRequestId;
+      setShoppingRequestId(nextRequestId);
       if (result.unanswered) {
         setMessages(prev => [...prev, { role: 'assistant', text: '😅 这个问题我暂时无法回答，已在页面中间给出提示。', fullText: result.reply, unanswered: true }]);
         onResult(content, result);
       } else {
         const answer = onResult(content, result);
-        setMessages(prev => [...prev, { role: 'assistant', text: result.reply, trace: result.trace, mode: result.mode, answer }]);
+        setMessages(prev => [...prev, { role: 'assistant', text: result.reply, trace: result.trace, mode: result.mode, answer,
+          followUp: result.followUp, shoppingRequestId: nextRequestId,
+          ...(Object.hasOwn(result, 'fliggyContext') ? { fliggyContext: result.fliggyContext } : {}) }]);
       }
     } catch (e) {
       setMessages(prev => [...prev, { role: 'assistant', text: `😅 出错了：${e.message}`, unanswered: true }]);
       onResult(content, { reply: '', views: [], trace: [], mode: 'local', unanswered: { reason: `出错了：${e.message}` } });
     } finally {
       setBusy(false);
-      inputRef?.current?.focus();
+      inputRef?.current?.focus({ preventScroll: true });
     }
   };
 
@@ -73,17 +88,29 @@ export default function ChatPanel({ draft, setDraft, onResult, onFocusAnswer, in
           <Link to="/settings" className={`badge ${aiOn ? 'badge-success' : 'badge-gray'}`} title="配置 AI Key">
             {aiOn ? `🤖 ${settings.model}` : '🧩 本地模式'}
           </Link>
-          <button className="btn btn-ghost btn-sm" onClick={() => setMessages([WELCOME])} title="清空对话">🧹</button>
+          <button type="button" className="btn btn-ghost btn-sm" disabled={busy} aria-label="清空对话" onClick={() => {
+            if (shoppingRequestId && graph.getEntity(shoppingRequestId)?.status === 'collecting') graph.updateEntity(shoppingRequestId, { status: 'cancelled' });
+            setShoppingRequestId(null);
+            setMessages([WELCOME]);
+          }} title="清空对话">🧹</button>
         </div>
       </div>
 
-      <div className="chat-messages" ref={listRef}>
+      <div className="chat-messages" ref={listRef} aria-live="polite">
         {messages.map((m, i) => (
           <div key={i} className={`chat-row ${m.role}`}>
             <div className={`chat-bubble ${m.role}${m.answer ? ' summary' : ''}${m.unanswered ? ' unanswered' : ''}`}>
               <div className={m.answer ? 'chat-clamp' : undefined}>
                 {m.role === 'assistant' ? <Markdown text={m.text} /> : m.text}
               </div>
+              {m.followUp && (
+                <div className="shopping-followup" aria-label="补充采购需求">
+                  {m.followUp.options.map(option => (
+                    <button key={option} type="button" className="shopping-option" disabled={busy || i !== messages.length - 1 || m.shoppingRequestId !== shoppingRequestId}
+                      onClick={() => send(option)}>{option}</button>
+                  ))}
+                </div>
+              )}
               {m.answer && (
                 <button type="button" className="chat-focus" onClick={() => onFocusAnswer(m.answer)} title="在页面中间查看完整结果">
                   👈 完整结果见页面中间
@@ -114,6 +141,7 @@ export default function ChatPanel({ draft, setDraft, onResult, onFocusAnswer, in
       <form className="chat-input" onSubmit={e => { e.preventDefault(); send(draft); }}>
         <textarea
           ref={inputRef}
+          aria-label="向家庭助手提问或补充采购需求"
           className="form-control"
           rows={2}
           value={draft}

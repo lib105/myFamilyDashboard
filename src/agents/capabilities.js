@@ -8,6 +8,8 @@ import { recommendIngredients, recommendRecipes, currentMonth } from './recommen
 import { chatCompletion, isAIConfigured, parseJsonFromText } from './llmClient.js';
 import { getAgentConfig, buildAgentPrompt, createCustomCapability } from './agentConfig.js';
 import { FAMILY_HANDLERS } from './familyAgents.js';
+import { searchVideoWithBrowser } from './browserAgent.js';
+import { searchProductsWithBrowser } from './shoppingBrowserAgent.js';
 import { parseLayoutCommand, normalizeLayoutCommand, describeLayoutCommand } from './homeLayout.js';
 
 export { describeFamily };
@@ -231,14 +233,11 @@ async function collectIngredientWithLLM(graph, name) {
   return entity;
 }
 
-function querySupermarketPrice(args, { graph }) {
-  const { resolved, unknown } = resolveItems(graph, args.items);
-  const ingredients = resolved.length ? resolved.map(r => r.ingredient) : topRecommended(graph, 5);
-  const rows = ingredients.map(i => ({ ingredient: i, offers: offersFor(graph, i.id) })).filter(r => r.offers.length);
-  if (!rows.length) return { reply: `暂未查到「${unknown.join('、') || '相关食材'}」的超市价格。`, views: [] };
+function querySupermarketPrice(args) {
+  const items = asArray(args.items).map(asText).filter(Boolean).join('、');
   return {
-    reply: `💰 超市比价（模拟数据）：\n${rows.map(r => `${r.ingredient.emoji} ${r.ingredient.label}：${r.offers[0].store.label}最便宜 ¥${r.offers[0].offer.price}/${r.offers[0].offer.unit}`).join('\n')}${resolved.length ? '' : '\n（未指定食材，已按当季推荐比价）'}`,
-    views: [{ type: 'prices', title: '超市价格比价', args: { ingredientIds: rows.map(r => r.ingredient.id) } }],
+    reply: `目前无法提供${items ? `「${items}」的` : ''}沃尔玛、比优特、华润万家真实门店比价及来源截图：旧报价未经核验，已停止作为实时价格返回。不会把京东代购或不同商品的价格分配给三家商超。可明确要求“在京东搜索商品”查询京东页面报价与来源截图；不会自动替换平台。`,
+    views: [],
   };
 }
 
@@ -293,14 +292,18 @@ function placeOrder(args, { graph }) {
 export function confirmOrder(graph, orderId) {
   const order = graph.getEntity(orderId);
   if (!order || order.status !== '待确认') return;
+  const storeId = graph.objects(orderId, 'orderedFrom')[0];
+  const store = storeId ? graph.getEntity(storeId) : null;
+  const storeLabel = store?.label || order.storeLabel || '超市';
+  const delivery = store?.delivery || order.delivery || '同城配送';
   graph.batch(() => {
     graph.updateEntity(orderId, { status: '已下单' });
     const now = new Date().toLocaleString('zh-CN', { hour12: false });
     const ship = graph.addEntity({
       id: newId('ship'), type: 'Shipment', trackingNo: `FD${Date.now().toString().slice(-10)}`,
-      carrier: `${order.storeLabel}·同城配送`, item: order.items.map(i => `${i.label} x${i.quantity}`).join('、'),
-      status: '待配送', eta: order.delivery,
-      events: [{ time: now, desc: `${order.storeLabel}已接单，正在拣货（模拟）` }],
+      carrier: `${storeLabel}·同城配送`, item: order.items.map(i => `${i.label} x${i.quantity}`).join('、'),
+      status: '待配送', eta: delivery,
+      events: [{ time: now, desc: `${storeLabel}已接单，正在拣货（模拟）` }],
     });
     graph.addTriple(ship.id, 'shipmentOf', orderId);
   });
@@ -309,6 +312,126 @@ export function confirmOrder(graph, orderId) {
 export function cancelOrder(graph, orderId) {
   const order = graph.getEntity(orderId);
   if (order?.status === '待确认') graph.updateEntity(orderId, { status: '已取消' });
+}
+
+/* ---------- pantry & smart restock ---------- */
+export function getPantryItems(graph) {
+  return graph.findEntities('PantryItem')
+    .map(item => {
+      const ingId = graph.objects(item.id, 'stocksIngredient')[0];
+      const ingredient = ingId ? graph.getEntity(ingId) : null;
+      return ingredient ? { item, ingredient } : null;
+    })
+    .filter(Boolean)
+    .filter(({ item }) => Number(item.quantity) > 0);
+}
+
+export function upsertPantryStock(graph, ingredientId, { quantity, unit, mode = 'set', location = '冰箱冷藏' } = {}) {
+  const existingId = graph.subjects('stocksIngredient', ingredientId)[0];
+  const existing = existingId ? graph.getEntity(existingId) : null;
+  const delta = Number.isFinite(Number(quantity)) ? Number(quantity) : 1;
+  if (existing) {
+    const nextQty = mode === 'consume'
+      ? Math.max(0, Math.round((Number(existing.quantity || 0) - delta) * 100) / 100)
+      : Math.max(0, Math.round(delta * 100) / 100);
+    return graph.updateEntity(existing.id, {
+      quantity: nextQty,
+      ...(unit ? { unit } : {}),
+    });
+  }
+  if (mode === 'consume') return null;
+  const created = graph.addEntity({
+    id: newId('pantry'),
+    type: 'PantryItem',
+    quantity: Math.max(0, Math.round(delta * 100) / 100),
+    unit: unit || '份',
+    location,
+  });
+  graph.addTriple(created.id, 'stocksIngredient', ingredientId);
+  return created;
+}
+
+function managePantry(args, { graph }) {
+  const action = ['list', 'set', 'consume'].includes(args.action) ? args.action : (asArray(args.items).length ? 'set' : 'list');
+  const { resolved, unknown } = resolveItems(graph, args.items);
+  if (action !== 'list' && resolved.length) {
+    graph.batch(() => {
+      resolved.forEach(({ ingredient, quantity }, idx) => {
+        const raw = asArray(args.items)[idx];
+        const unit = typeof raw === 'object' && raw?.unit ? asText(raw.unit) : undefined;
+        upsertPantryStock(graph, ingredient.id, { quantity, unit, mode: action });
+      });
+    });
+  }
+  const stocks = getPantryItems(graph);
+  const summary = stocks.length
+    ? stocks.map(({ item, ingredient }) => `${ingredient.emoji} ${ingredient.label} ${item.quantity}${item.unit || '份'}`).join('、')
+    : '暂无库存记录';
+  const prefix = action === 'set' && resolved.length
+    ? `🧊 已更新冰箱库存（${resolved.map(r => r.ingredient.label).join('、')}）。\n`
+    : action === 'consume' && resolved.length
+      ? `🍳 已扣减库存（${resolved.map(r => r.ingredient.label).join('、')}）。\n`
+      : '';
+  return {
+    reply: `${prefix}🧊 当前家庭食材库存：${summary}${unknown.length ? `\n（未识别食材：${unknown.join('、')}）` : ''}`,
+    views: [{ type: 'pantry', title: '家庭食材库存' }],
+  };
+}
+
+export function computeRecipeRestock(graph, { recipeQuery, mealType } = {}) {
+  const q = asText(recipeQuery);
+  const allRecipes = graph.findEntities('Recipe');
+  const matched = q
+    ? allRecipes.filter(r => r.label.includes(q) || q.includes(r.label))
+    : [];
+  const targetRecipes = matched.length
+    ? matched
+    : recommendRecipes(graph, { mealType, limit: 3 }).recipes.map(r => r.recipe);
+
+  const inStockIds = new Set(getPantryItems(graph).map(p => p.ingredient.id));
+  const plans = targetRecipes.map(recipe => {
+    const required = graph.objects(recipe.id, 'usesIngredient').map(id => graph.getEntity(id)).filter(Boolean);
+    const have = required.filter(ing => inStockIds.has(ing.id));
+    const missing = required.filter(ing => !inStockIds.has(ing.id));
+    return { recipe, required, have, missing };
+  });
+  const missingMap = new Map();
+  plans.forEach(p => p.missing.forEach(ing => missingMap.set(ing.id, ing)));
+  return { plans, missingIngredients: [...missingMap.values()] };
+}
+
+function smartRestockForRecipes(args, { graph }) {
+  const { plans, missingIngredients } = computeRecipeRestock(graph, {
+    recipeQuery: args.recipe,
+    mealType: args.mealType,
+  });
+  if (!plans.length) {
+    return { reply: '没有找到对应的食谱，无法计算缺料。', views: [] };
+  }
+  const lines = plans.map(p => {
+    const haveText = p.have.length ? `已有：${p.have.map(i => i.label).join('、')}` : '暂无现成主料';
+    const missText = p.missing.length ? `缺少：${p.missing.map(i => i.label).join('、')}` : '食材已齐全 ✅';
+    return `${p.recipe.emoji} ${p.recipe.label}（${haveText}；${missText}）`;
+  });
+  const views = [{ type: 'pantry', title: '食谱缺料与家庭库存', args: { recipe: args.recipe, mealType: args.mealType } }];
+
+  if (!missingIngredients.length) {
+    return {
+      reply: `🎉 冰箱库存充足！可以直接制作：\n${lines.join('\n')}`,
+      views,
+    };
+  }
+  if (args.autoOrder) {
+    const orderRes = placeOrder({ items: missingIngredients.map(i => ({ name: i.label, quantity: 1 })) }, { graph });
+    return {
+      reply: `🛒 食谱缺料盘点：\n${lines.join('\n')}\n\n${orderRes.reply}`,
+      views: [...orderRes.views, ...views],
+    };
+  }
+  return {
+    reply: `🧺 食谱缺料盘点：\n${lines.join('\n')}\n\n共需补货 ${missingIngredients.length} 种食材：${missingIngredients.map(i => `${i.emoji}${i.label}`).join('、')}。可在库存卡片中一键生成最优超市采购单。`,
+    views,
+  };
 }
 
 function trackDelivery(args, { graph }) {
@@ -393,6 +516,10 @@ const HANDLERS = {
   query_supermarket_price: querySupermarketPrice,
   query_app_discounts: queryAppDiscounts,
   place_order: placeOrder,
+  manage_pantry: managePantry,
+  smart_restock_for_recipes: smartRestockForRecipes,
+  search_video_with_browser: searchVideoWithBrowser,
+  search_products_with_browser: searchProductsWithBrowser,
   track_delivery: trackDelivery,
   manage_capabilities: manageCapabilities,
   arrange_home: arrangeHome,
@@ -410,5 +537,9 @@ export async function executeCapability(capability, args, ctx) {
     views: (result.views || []).map(v => ({ ...v, capabilityId: capability.id })),
     ...(result.layout ? { layout: result.layout } : {}),
     ...(result.profileUpdated ? { profileUpdated: true } : {}),
+    ...(Object.hasOwn(result, 'shoppingRequestId') ? { shoppingRequestId: result.shoppingRequestId } : {}),
+    ...(result.followUp ? { followUp: result.followUp } : {}),
+    ...(result.shoppingClarification ? { shoppingClarification: true } : {}),
+    ...(Object.hasOwn(result, 'fliggyContext') ? { fliggyContext: result.fliggyContext } : {}),
   };
 }

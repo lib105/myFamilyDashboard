@@ -6,6 +6,10 @@
 
 > 健康饮食建议仅供参考，不能替代医生或营养师的专业意见。
 
+服务端浏览器功能请先阅读：[ego-lite 部署与故障排查](docs/ego-browser-server.md)。
+安装 Skill 不会自动连接网页 Agent；生产环境需独立运行 `npm run start:browser` 并配置已认证的同源 API 代理。
+采购 Agent 现支持 [先确认需求，再搜索京东商品与优惠](docs/shopping-comparison.md)，并提供[可点击放大的价格来源截图](docs/price-evidence.md)。三家商超门店来源尚未核验，旧缓存已停止作为实时比价展示；淘宝及天猫搜索已取消，历史记录保留。
+
 ## 饮食约束与推荐
 
 - 对话支持“爸爸是素食主义者”“爸爸吃素”“爸爸吃纯素”等明确陈述。本地规则与 AI 工具均通过
@@ -53,7 +57,7 @@ flowchart LR
 
 | 层 | 文件 | 职责 |
 |----|------|------|
-| **TBox（Schema）** | `src/ontology/schema.js` | 声明 16 个类与 17 种关系，每种关系都带 `domain → range` 类型约束 |
+| **TBox（Schema）** | `src/ontology/schema.js` | 声明本体类与关系，每种关系都带 `domain → range` 类型约束 |
 | **ABox（知识图谱）** | `src/ontology/graph.js` | 轻量内存三元组存储，写入时按 Schema 校验；支持批量事务、订阅、分层持久化 |
 | **种子与迁移** | `src/ontology/seed.js` | 把本地 JSON 模拟数据转换为实体 + 三元组；迁移旧版本数据 |
 | **领域查询** | `src/ontology/queries.js` | 成员档案、同义词解析、概念扩展等领域 API，Agent 不直接操作三元组 |

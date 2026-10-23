@@ -3,14 +3,17 @@
     { "id": "agent_profile", "label": "健康档案 Agent", "emoji": "🩺", "description": "通过对话采集、维护家庭成员健康档案（属性不限）" },
     { "id": "agent_nutrition", "label": "营养推荐 Agent", "emoji": "🥗", "description": "结合季节与成员健康状况，推荐食材与简单食谱" },
     { "id": "agent_ingredient", "label": "食材数据 Agent", "emoji": "📚", "description": "采集、查询食材营养与时令数据" },
-    { "id": "agent_shopping", "label": "采购 Agent", "emoji": "🛒", "description": "超市比价、汇总其他 App 打折信息、模拟下单" },
+    { "id": "agent_shopping", "label": "采购 Agent", "emoji": "🛒", "description": "京东商品与优惠搜索，附可点击放大的价格来源截图；三家商超真实门店比价待核验，旧缓存不可当实时价格",
+      "agentMd": "# 角色\n你是家庭采购助手。\n\n# 行为准则\n- 三家商超门店来源未核验，停止用旧缓存、京东代购或其他商品冒充门店实价；不能偷偷替换用户指定平台\n- 商品网络搜索先确认类型（如常温/冷藏奶、山地/公路车）、品牌、规格和预算；用户可明确回答不限或先直接搜\n- 网络商品搜索仅查询京东；淘宝/天猫搜索已取消，山姆会员商店已停用；只读搜索，不作购买操作\n- 网页价和优惠是采集时的观察，不承诺最终结算价\n- 保留 PLUS、券、满减、首购等条件原文，不自行叠加或推算到手价\n- 优先京东页面自营标识或旗舰店店名；店名不等于独立核验的官方认证\n- 核对品牌、容量、包装数量、车型和预算，不将不同规格当作同一商品\n- 遮挡价格、起价或价格条件不同不计算价差；遇到登录验证提示人工处理\n- 京东页面商品卡片截图由本地浏览器采集，包含标题、价格、条件和采集时间；截图缺失明确说明，不拿商品宣传图替代\n- 原有超市促销、库存补货报价及订单仅为演示/模拟，不承诺真实时效或最低价",
+      "skillMd": "# 技能\n- 京东商品搜索：标题、规格、链接、页面价格、优惠条件、店铺与采集时间\n- 商品价格来源裁图缩略图，可点击放大核对原网页价格；历史无截图时明确提示\n- 三家商超真实来源待核验，不返回旧缓存比价；库存盘点保留，订单仍是模拟",
+      "starters": ["在京东找牛奶，先直接搜", "我想买牛奶", "在京东找自行车"] },
     { "id": "agent_logistics", "label": "物流 Agent", "emoji": "🚚", "description": "查询订单与快递物流状态" },
     { "id": "agent_weather", "label": "天气 Agent", "emoji": "🌤️", "description": "查询今日天气（Open-Meteo），给出家庭出行与穿衣提示" },
-    { "id": "agent_travel", "label": "旅行 Agent", "emoji": "✈️", "description": "管理家庭旅行计划、行前清单与孩子们的旅行心愿，提供出行建议",
-      "agentMd": "# 角色\n你是家庭的旅行规划师，熟悉亲子出行。\n\n# 行为准则\n- 先确认目的地、出行时间、预算和同行成员\n- 给出的建议要兼顾老人与孩子的体力和健康状况\n- 涉及签证、证件、保险等事项时提醒用户以官方信息为准",
-      "skillMd": "# 技能\n- 查询家庭旅行计划（目的地、时间、预算、状态）\n- 跟踪行前准备清单并勾选完成\n- 汇总孩子们的旅行心愿\n- 结合知识库与参考网址给出行程与攻略建议",
+    { "id": "agent_travel", "label": "旅行 Agent", "emoji": "✈️", "description": "管理家庭旅行计划、行前清单与心愿，直连飞猪 AI 开放平台实时查询机酒、景点门票与度假套餐",
+      "agentMd": "# 角色\n你是家庭的旅行规划师，熟悉亲子出行，已接入飞猪 AI 开放平台（FlyAI）官方实时商品库与机票、酒店、景点搜索能力。\n\n# 行为准则\n- 先确认目的地、出行时间、预算和同行成员\n- 查询真实出行资源时，调用 fliggy_travel_search（飞猪全场景搜索）获取实时酒店、机票、景点门票或度假套餐\n- 给出的建议要兼顾老人与孩子的体力和健康状况\n- 涉及签证、证件、保险等事项时提醒用户以官方信息为准",
+      "skillMd": "# 技能\n- 飞猪实时搜索（fliggy_travel_search）：通过飞猪AI开放平台实时检索真实酒店、机票、景点门票与度假套餐\n- 查询家庭旅行计划（目的地、时间、预算、状态）\n- 跟踪行前准备清单并勾选完成\n- 汇总孩子们的旅行心愿\n- 结合知识库与飞猪实时数据给出行程与攻略建议",
       "contextMd": "# 家庭出行偏好\n- 每年至少一次亲子旅行，偏好寒暑假出行\n- 出行预算一般在 1.5～2.5 万元\n- 小花对花生过敏，外出就餐需提前确认",
-      "starters": ["我们有哪些旅行计划", "大阪行前清单还差什么", "三亚亲子游有什么建议"] },
+      "starters": ["三亚海棠湾有什么酒店", "查查去三亚的机票和景点门票", "我们有哪些旅行计划", "大阪行前清单还差什么"] },
     { "id": "agent_health", "label": "健康 Agent", "emoji": "💗", "description": "汇总家人健康状况与日常建议，管理用药、体检、疫苗等健康提醒",
       "agentMd": "# 角色\n你是家庭健康管家，语气温和、简洁。\n\n# 行为准则\n- 结合家庭成员的健康档案给出日常生活建议\n- 不做诊断、不开药方；出现严重或急性症状时建议立即就医\n- 所有建议仅供参考，不能替代医生意见",
       "skillMd": "# 技能\n- 汇总全家健康状况与日常建议\n- 管理用药、监测、体检、疫苗等健康提醒（查看/新增/完成）\n- 基于知识库回答常见健康问题",
@@ -26,11 +29,17 @@
       "skillMd": "# 技能\n- 隐藏模块：如“隐藏家庭档案”“不想看天气”\n- 显示模块：如“显示超市比价”\n- 置顶模块：如“把超市打折信息放到最上面”\n- 恢复默认布局：如“恢复默认布局”\n\n# 可管理的模块\n家庭档案、天气、打折信息、超市比价、健康提醒、健康概览、食谱推荐、食材数据、当季食材、家庭任务、旅行计划、采购订单、物流快递、能力清单",
       "starters": ["隐藏家庭档案", "把超市打折信息放到最上面", "恢复默认布局"] },
     { "id": "agent_system", "label": "系统 Agent", "emoji": "🧠", "description": "通过对话管理 Agent 能力（新增/启用/禁用/删除）" },
+    { "id": "agent_video", "label": "视频搜索 Agent", "emoji": "🎬", "description": "调用服务器上的 ego-lite 浏览器打开视频网站，执行真实搜索并返回最佳视频结果 URL",
+      "agentMd": "# 角色\n你是家庭视频搜索助手，通过服务器端 ego-lite 浏览器在 B站、抖音、必应视频搜索做菜教程、健康科普、健身操或亲子视频。\n\n# 行为准则\n- 只访问本体知识图谱中已授权的 BrowserSite 站点\n- 返回实际提取的视频详情 URL，不将搜索页伪装成视频\n- 首选结果按网站搜索顺序选取，不声称已验证医学权威性或儿童安全\n- 遇到登录或验证码时停止并提示人工处理，不绕过检查\n- 每次浏览器操作均记录到 BrowserTaskRun 实体中供追溯",
+      "skillMd": "# 技能\n- 调用服务端 ego-lite 浏览器搜索视频并返回真实 URL 与候选列表\n- 支持指定 B站、抖音（douyin）或必应视频；下厨房的视频提取暂未支持",
+      "contextMd": "# 家庭常见视频需求\n- 家常菜做法视频教程（如番茄炒蛋、白萝卜炖牛肉）\n- 老人八段锦、血压测量规范教学视频\n- 儿童科普与手工视频",
+      "starters": ["搜索番茄炒蛋的做法视频", "在抖音找八段锦教学视频", "在B站找八段锦教学视频"] },
     { "id": "agent_custom", "label": "自定义 Agent", "emoji": "🧩", "description": "承载用户通过对话新增的能力" }
   ],
   "capabilities": [
     {
       "id": "update_member_profile", "label": "记录家庭成员档案", "agentId": "agent_profile", "handler": "update_member_profile", "priority": 100,
+      "mutates": ["FamilyMember", "HealthCondition", "Allergen"],
       "description": "新增或更新家庭成员档案：年龄、疾病/健康状况（如高血压、糖尿病、过敏性鼻炎、免疫力低下）、过敏原以及任意其他属性。",
       "keywords": ["档案", "岁", "过敏", "患有", "血压", "血糖", "身高", "体重", "成员", "家人"],
       "examples": ["爸爸有高血压，妈妈有过敏性鼻炎", "奶奶72岁，血糖偏高，对花生过敏"],
@@ -58,6 +67,7 @@
     },
     {
       "id": "recommend_produce", "label": "推荐当季食材/水果/蔬菜", "agentId": "agent_nutrition", "handler": "recommend_produce", "priority": 40,
+      "reads": ["FamilyMember", "HealthCondition", "Allergen", "Ingredient"], "autoRefreshOnMutation": true,
       "description": "根据当前季节和家庭成员健康状况推荐食材、水果或蔬菜，当季优先，并过滤过敏原。",
       "keywords": ["推荐", "吃什么", "当季", "时令", "水果", "蔬菜", "食材", "应季"],
       "examples": ["推荐点适合爸爸的水果", "这个季节吃什么蔬菜好"],
@@ -68,6 +78,7 @@
     },
     {
       "id": "recommend_recipes", "label": "推荐简单食谱", "agentId": "agent_nutrition", "handler": "recommend_recipes", "priority": 30,
+      "reads": ["FamilyMember", "HealthCondition", "Allergen", "Ingredient", "Recipe"], "autoRefreshOnMutation": true,
       "description": "基于推荐食材生成适合全家的简单食谱。",
       "keywords": ["食谱", "菜谱", "做什么菜", "怎么做", "晚饭", "午饭", "早餐", "早饭", "做饭", "做菜"],
       "examples": ["今晚做什么菜", "给孩子推荐个早餐"],
@@ -78,16 +89,30 @@
     },
     {
       "id": "collect_ingredient_data", "label": "采集食材数据", "agentId": "agent_ingredient", "handler": "collect_ingredient_data", "priority": 20,
+      "mutates": ["Ingredient"], "reads": ["Ingredient", "HealthCondition", "Allergen"],
       "description": "查询/采集某种食材的营养成分、时令月份、适宜和慎食人群。",
       "keywords": ["营养", "成分", "介绍", "适合谁", "什么季节", "食材数据", "采集"],
       "examples": ["介绍一下猕猴桃的营养", "山药适合谁吃"],
       "params": { "type": "object", "properties": { "items": { "type": "array", "items": { "type": "string" } } }, "required": ["items"] }
     },
     {
+      "id": "search_products_with_browser", "label": "京东商品与优惠搜索", "agentId": "agent_shopping", "handler": "search_products_with_browser", "priority": 65,
+      "execution": "browser", "mutates": ["BrowserTaskRun", "ShoppingRequest"], "reads": ["BrowserSite", "ShoppingRequest"],
+      "browserSites": ["site_jd"],
+      "description": "确认类型、品牌、规格与预算后，按 ShoppingRequest 仅在京东只读搜索；优先页面自营标识和旗舰店店名。淘宝/天猫搜索已取消。不猜测遮挡价、不自动叠券或下单；信息不足时在聊天中追问。",
+      "keywords": ["京东", "jd.com", "商品搜索"],
+      "examples": ["在京东搜索牛奶，看看价格和优惠", "帮爸爸在京东查血压计的价格", "京东纸尿裤有什么打折信息"],
+      "params": { "type": "object", "properties": {
+        "query": { "type": "string", "description": "用户采购需求原文；不完整时先追问，不能自行补全偏好" },
+        "requestId": { "type": "string", "description": "应用已确认的 ShoppingRequest ID，可代替 query；不能编造" },
+        "site": { "type": "string", "enum": ["site_jd", "京东", "jd", "jd.com"], "description": "仅支持京东，默认京东；淘宝/天猫已停用" }
+      } }
+    },
+    {
       "id": "query_supermarket_price", "label": "超市价格比价", "agentId": "agent_shopping", "handler": "query_supermarket_price", "priority": 20,
-      "description": "查询多个超市的食材价格并比价。",
-      "keywords": ["价格", "多少钱", "比价", "超市", "便宜", "价钱"],
-      "examples": ["西兰花和苹果哪家超市便宜"],
+      "description": "说明沃尔玛、比优特、华润万家真实门店报价尚未核验；禁止用历史演示报价或京东代购冒充门店实价，不自动替换平台。",
+      "keywords": ["价格", "多少钱", "比价", "超市", "便宜", "价钱", "沃尔玛", "比优特", "华润万家", "商超比价", "哪家便宜"],
+      "examples": ["西兰花和苹果哪家超市便宜", "对比沃尔玛、比优特和华润万家的价格", "比优特和沃尔玛买鸡蛋哪个划算"],
       "params": { "type": "object", "properties": { "items": { "type": "array", "items": { "type": "string" } } } }
     },
     {
@@ -110,6 +135,24 @@
       "keywords": ["快递", "物流", "到哪了", "配送", "订单状态", "送到", "包裹"],
       "examples": ["我的快递到哪了"],
       "params": { "type": "object", "properties": {} }
+    },
+    {
+      "id": "fliggy_travel_search", "label": "飞猪旅行实时搜索", "agentId": "agent_travel", "handler": "fliggy_travel_search", "priority": 45,
+      "description": "按需求分别调用飞猪酒店、航班、火车票、景点门票垂直接口；综合需求用语义搜索。缺出发地、目的地、日期时追问，不用酒店套餐代替机票或门票；不自动预订。" ,
+      "keywords": ["飞猪", "订酒店", "查机票", "订机票", "买门票", "门票", "酒店", "住宿", "航班", "机票", "度假", "景点门票", "飞猪旅行"],
+      "examples": ["在飞猪搜三亚亲子酒店", "查查西湖附近的酒店", "帮我查三亚水世界门票", "三亚亚龙湾有什么住宿推荐"],
+      "params": { "type": "object", "properties": {
+        "query": { "type": "string", "description": "搜索关键词或旅行需求，如 三亚亲子酒店、西湖门票" },
+        "type": { "type": "string", "enum": ["all", "hotel", "poi", "flight", "train"], "description": "综合、酒店、景点门票、机票或火车票；query中的明确品类优先" },
+        "origin": { "type": "string", "description": "明确提供的出发地" },
+        "destination": { "type": "string", "description": "明确提供的目的地" },
+        "depDate": { "type": "string", "description": "出发日期 YYYY-MM-DD；支持从问题中解析10月25日、2026/10/25等写法，未提供时追问" },
+        "backDate": { "type": "string", "description": "用户明确要求往返时的回程日期 YYYY-MM-DD，不得早于出发日" },
+        "destName": { "type": "string", "description": "酒店目的地城市" },
+        "cityName": { "type": "string", "description": "景点所在城市" },
+        "checkInDate": { "type": "string" },
+        "checkOutDate": { "type": "string" }
+      }, "required": ["query"] }
     },
     {
       "id": "list_trips", "label": "查看旅行计划", "agentId": "agent_travel", "handler": "list_trips", "priority": 30,
@@ -185,10 +228,80 @@
     },
     {
       "id": "complete_task", "label": "完成任务打卡", "agentId": "agent_task", "handler": "complete_task", "priority": 55,
-      "description": "把某个家庭任务标记为已完成并累计积分。",
+      "mutates": ["Task", "TaskLog"],
+      "description": "把某个家庭任务标记为已完成，生成打卡记录（TaskLog）并向实际完成人累计积分。",
       "keywords": ["完成任务", "打卡", "做完了", "完成了"],
-      "examples": ["浇花完成了"],
-      "params": { "type": "object", "properties": { "task": { "type": "string", "description": "任务名称" } }, "required": ["task"] }
+      "examples": ["浇花完成了", "小明完成了整理玩具房间"],
+      "params": { "type": "object", "properties": {
+        "task": { "type": "string", "description": "任务名称" },
+        "member": { "type": "string", "description": "完成该任务的家庭成员称呼，可选" }
+      }, "required": ["task"] }
+    },
+    {
+      "id": "log_health_record", "label": "记录健康监测与用药", "agentId": "agent_health", "handler": "log_health_record", "priority": 65,
+      "mutates": ["HealthRecord", "FamilyMember"],
+      "description": "记录家庭成员的血压、血糖、体重、体温、心率或服药打卡，生成时序观测实体（HealthRecord）。",
+      "keywords": ["测血压", "量血压", "测血糖", "量体温", "称体重", "吃了降压药", "服药打卡", "记录血压", "记录血糖"],
+      "examples": ["爸爸今天血压135/85", "奶奶空腹血糖6.2", "爸爸吃过降压药了"],
+      "params": { "type": "object", "properties": {
+        "member": { "type": "string", "description": "家庭成员称呼" },
+        "metric": { "type": "string", "enum": ["血压", "血糖", "体重", "体温", "心率", "用药"], "description": "监测指标类型" },
+        "value": { "type": "string", "description": "测量数值或药物名称，如 135/85、6.2、降压药" },
+        "unit": { "type": "string", "description": "单位，如 mmHg、mmol/L、kg、℃、次" },
+        "note": { "type": "string", "description": "备注，如 空腹、餐后、早起" }
+      }, "required": ["member", "metric", "value"] }
+    },
+    {
+      "id": "query_health_records", "label": "查看健康监测账本", "agentId": "agent_health", "handler": "query_health_records", "priority": 32,
+      "reads": ["HealthRecord", "FamilyMember"],
+      "description": "查看家庭成员的血压、血糖、体重、用药等历史监测记录与趋势。",
+      "keywords": ["血压记录", "血糖记录", "健康记录", "监测记录", "历史血压", "血压趋势", "吃药记录"],
+      "examples": ["查看爸爸的血压记录", "家里最近的健康监测记录"],
+      "params": { "type": "object", "properties": {
+        "member": { "type": "string", "description": "成员称呼，可选" },
+        "metric": { "type": "string", "description": "指标类型，如 血压/血糖/体重/用药，可选" }
+      } }
+    },
+    {
+      "id": "manage_pantry", "label": "家庭冰箱库存管理", "agentId": "agent_shopping", "handler": "manage_pantry", "priority": 35,
+      "mutates": ["PantryItem"], "reads": ["PantryItem", "Ingredient"],
+      "description": "查看或更新家里冰箱/储物柜的现有食材库存（新增入库、消耗扣减、盘点查看）。",
+      "keywords": ["冰箱", "库存", "家里有", "还剩", "还有多少", "食材库存", "储物柜"],
+      "examples": ["看看冰箱里有什么", "冰箱里还有2个西红柿和1盒豆腐", "用掉了2个鸡蛋"],
+      "params": { "type": "object", "properties": {
+        "action": { "type": "string", "enum": ["list", "set", "consume"], "description": "list=查看库存, set=设置/补充库存, consume=消耗库存" },
+        "items": { "type": "array", "items": { "type": "object", "properties": {
+          "name": { "type": "string" },
+          "quantity": { "type": "number" },
+          "unit": { "type": "string" }
+        }, "required": ["name"] } }
+      } }
+    },
+    {
+      "id": "smart_restock_for_recipes", "label": "按食谱缺料智能补货", "agentId": "agent_shopping", "handler": "smart_restock_for_recipes", "priority": 38,
+      "mutates": ["Order"], "reads": ["Recipe", "Ingredient", "PantryItem", "Store", "PriceOffer"],
+      "description": "对比目标食谱（或推荐食谱）所需食材与家庭现有库存（PantryItem），自动计算缺少的食材并生成最优超市模拟采购单。",
+      "keywords": ["缺什么", "补货", "缺料", "差什么食材", "买齐", "照着食谱买", "凑齐"],
+      "examples": ["今晚做菜还缺什么食材", "做番茄炒蛋还差什么，帮我下单买齐"],
+      "params": { "type": "object", "properties": {
+        "recipe": { "type": "string", "description": "指定食谱名称，不填则按当前推荐食谱计算" },
+        "mealType": { "type": "string", "description": "餐次，如 晚餐，可选" },
+        "autoOrder": { "type": "boolean", "description": "是否直接为所缺食材生成待确认订单" }
+      } }
+    },
+    {
+      "id": "search_video_with_browser", "label": "浏览器搜索视频", "agentId": "agent_video", "handler": "search_video_with_browser", "priority": 48,
+      "execution": "browser",
+      "mutates": ["BrowserTaskRun"], "reads": ["BrowserSite", "FamilyMember"],
+      "browserSites": ["site_bilibili", "site_douyin", "site_bing_video", "site_xiachufang"],
+      "description": "调用服务器 ego-lite 浏览器在 B站、抖音（douyin）或必应视频执行真实搜索，返回视频详情 URL 和候选列表。登录或验证阻塞时提示人工处理。",
+      "keywords": ["视频", "教程", "教学视频", "做法视频", "B站", "b站", "bilibili", "抖音", "douyin", "搜视频", "找视频", "看视频"],
+      "examples": ["在抖音搜索番茄炒蛋的做法视频", "去B站搜索八段锦教学视频", "帮爷爷在抖音找一个测量血压的视频教程"],
+      "params": { "type": "object", "properties": {
+        "query": { "type": "string", "description": "要搜索的视频关键词，如 番茄炒蛋做法、八段锦教学" },
+        "site": { "type": "string", "description": "目标网站名称或 ID，如 抖音 / douyin / site_douyin / B站 / 必应视频，可选；未指定时默认 B站" },
+        "member": { "type": "string", "description": "为哪位家庭成员搜索，可选" }
+      }, "required": ["query"] }
     },
     {
       "id": "task_plan", "label": "任务分工建议", "agentId": "agent_task", "handler": "agent_consult", "priority": 15,

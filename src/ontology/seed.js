@@ -1,10 +1,11 @@
-import { SEASONS, FOOD_SOURCES } from './schema.js';
+import { CLASSES, SEASONS, FOOD_SOURCES } from './schema.js';
 import conditions from '../data/food/conditions.json';
 import allergens from '../data/food/allergens.json';
 import ingredients from '../data/food/ingredients.json';
 import ingredientSources from '../data/food/ingredientSources.json';
 import recipes from '../data/food/recipes.json';
 import recipeExtraSources from '../data/food/recipeExtraSources.json';
+import recipeExtraAllergens from '../data/food/recipeExtraAllergens.json';
 import priceData from '../data/food/supermarketPrices.json';
 import promotions from '../data/food/appDiscounts.json';
 import shipments from '../data/food/logistics.json';
@@ -13,6 +14,8 @@ import members from '../data/members.json';
 import trips from '../data/trips.json';
 import tasks from '../data/tasks.json';
 import reminders from '../data/healthReminders.json';
+import pantry from '../data/food/pantry.json';
+import browserSites from '../data/browserSites.json';
 import { findMember, setMemberAttribute } from './queries.js';
 import { dietaryTypeFromAttributes } from './diet.js';
 
@@ -20,10 +23,14 @@ export const condId = (id) => `cond_${id}`;
 export const allergenId = (id) => `allergen_${id}`;
 export const ingId = (id) => `ing_${id}`;
 export const memberId = (id) => (id ? `member_${id}` : '');
+export const classEntityId = (cls) => `class_${cls}`;
 
 /** Loads static local knowledge into the "base" layer of the graph. */
 export function seedBase(graph) {
   graph.batch(() => {
+    Object.entries(CLASSES).forEach(([k, v]) => {
+      graph.addEntity({ id: classEntityId(k), type: 'OntologyClass', className: k, label: v.label, description: v.description }, 'base');
+    });
     SEASONS.forEach(s => graph.addEntity({ ...s, type: 'Season' }, 'base'));
     FOOD_SOURCES.forEach(s => graph.addEntity({ ...s, type: 'FoodSource' }, 'base'));
 
@@ -52,13 +59,24 @@ export function seedBase(graph) {
     Object.entries(recipeExtraSources).forEach(([source, ids]) => {
       ids.forEach(id => graph.addTriple(id, 'extrasDerivedFrom', source, 'base'));
     });
+    Object.entries(recipeExtraAllergens).forEach(([allergen, ids]) => {
+      ids.forEach(id => graph.addTriple(id, 'extrasContainAllergen', allergenId(allergen), 'base'));
+    });
 
     priceData.stores.forEach(s => graph.addEntity({ ...s, type: 'Store' }, 'base'));
     Object.entries(priceData.prices).forEach(([ing, row]) => {
       priceData.stores.forEach(store => {
         if (row[store.id] === undefined) return;
         const id = `offer_${ing}_${store.id}`;
-        graph.addEntity({ id, type: 'PriceOffer', price: row[store.id], unit: row.unit }, 'base');
+        graph.addEntity({
+          id,
+          type: 'PriceOffer',
+          price: row[store.id],
+          unit: row.unit,
+          updatedAt: row.updatedAt || null,
+          source: '历史未核验报价（不可作为实时价格）',
+          verified: false,
+        }, 'base');
         graph.addTriple(id, 'offerOf', ingId(ing), 'base');
         graph.addTriple(id, 'soldAt', store.id, 'base');
       });
@@ -89,12 +107,29 @@ export function seedBase(graph) {
     // because family members live in the user layer.
     tasks.forEach(t => graph.addEntity({ ...t, assignedTo: undefined, id: `task_${t.id}`, type: 'Task' }, 'base'));
     reminders.forEach(r => graph.addEntity({ ...r, memberId: undefined, id: `reminder_${r.id}`, type: 'HealthReminder' }, 'base'));
+    pantry.forEach(p => {
+      const { ingredientId, ...props } = p;
+      graph.addEntity({ ...props, type: 'PantryItem' }, 'base');
+      graph.addTriple(p.id, 'stocksIngredient', ingId(ingredientId), 'base');
+    });
+    browserSites.forEach(s => {
+      graph.addEntity({ ...s, type: 'BrowserSite' }, 'base');
+    });
 
     agentData.agents.forEach(a => graph.addEntity({ ...a, type: 'Agent' }, 'base'));
     agentData.capabilities.forEach(c => {
-      const { agentId, ...props } = c;
+      const { agentId, mutates = [], reads = [], browserSites: siteIds = [], ...props } = c;
       graph.addEntity({ ...props, type: 'Capability', kind: 'builtin', enabled: true }, 'base');
       graph.addTriple(c.id, 'providedBy', agentId, 'base');
+      mutates.forEach(cls => {
+        if (CLASSES[cls]) graph.addTriple(c.id, 'mutatesClass', classEntityId(cls), 'base');
+      });
+      reads.forEach(cls => {
+        if (CLASSES[cls]) graph.addTriple(c.id, 'readsClass', classEntityId(cls), 'base');
+      });
+      siteIds.forEach(sid => {
+        if (graph.getEntity(sid)?.type === 'BrowserSite') graph.addTriple(c.id, 'usesBrowserSite', sid, 'base');
+      });
     });
   });
 }

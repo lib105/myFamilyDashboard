@@ -2,8 +2,8 @@ import { useGraph } from '../../ontology/index.js';
 import { getFamilyProfiles, memberNameOf, memberNames } from '../../ontology/queries.js';
 import {
   getTrips, tripProgress, toggleTripItem, TRIP_STATUS,
-  getTasks, taskAssignees, taskScores, toggleTask, REPEAT_LABEL,
-  getReminders, reminderMembers, toggleReminder,
+  getTasks, taskAssignees, taskScores, toggleTask, getTaskLogs, REPEAT_LABEL,
+  getReminders, reminderMembers, toggleReminder, getHealthRecords,
 } from '../../agents/familyAgents.js';
 
 function Progress({ done, total, color }) {
@@ -87,6 +87,7 @@ export function TasksView() {
   const graph = useGraph();
   const tasks = getTasks(graph);
   const scores = taskScores(graph);
+  const recentLogs = getTaskLogs(graph).slice(0, 5);
   return (
     <div>
       <Progress done={tasks.filter(t => t.completed).length} total={tasks.length} color="var(--color-success)" />
@@ -108,6 +109,15 @@ export function TasksView() {
           </span>
         ))}
       </div>
+      {recentLogs.length > 0 && (
+        <div className="text-xs text-muted mt-sm">
+          📒 最近打卡：{recentLogs.map(log => {
+            const task = graph.getEntity(graph.objects(log.id, 'logOfTask')[0]);
+            const who = memberNames(graph.objects(log.id, 'completedBy').map(id => graph.getEntity(id)).filter(Boolean));
+            return `${who}完成「${task?.title || '任务'}」(+${log.points})`;
+          }).join('；')}
+        </div>
+      )}
     </div>
   );
 }
@@ -156,6 +166,38 @@ export function RemindersView() {
           <span className="badge badge-gray">{r.category}</span>
         </label>
       ))}
+    </div>
+  );
+}
+
+export function HealthRecordsView({ args = {} }) {
+  const graph = useGraph();
+  const records = getHealthRecords(graph, { memberId: args.memberId, metric: args.metric });
+  if (!records.length) {
+    return <div className="text-muted text-sm">暂无健康监测记录，可在右侧对话框输入如“记录爸爸今天血压135/85”或“爸爸吃过降压药了”。</div>;
+  }
+  return (
+    <div className="table-wrap">
+      <table className="data-table">
+        <thead>
+          <tr><th>成员</th><th>指标</th><th>记录值</th><th>备注</th><th>记录时间</th></tr>
+        </thead>
+        <tbody>
+          {records.map(r => {
+            const owners = graph.objects(r.id, 'recordFor').map(id => graph.getEntity(id)).filter(Boolean);
+            const time = r.recordedAt ? new Date(r.recordedAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+            return (
+              <tr key={r.id}>
+                <td>{memberNames(owners)}</td>
+                <td><span className="badge badge-secondary">{r.metric}</span></td>
+                <td className="font-bold">{r.value}{r.unit ? ` ${r.unit}` : ''}</td>
+                <td className="text-xs text-muted">{r.note || '—'}</td>
+                <td className="text-xs text-muted">{time}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

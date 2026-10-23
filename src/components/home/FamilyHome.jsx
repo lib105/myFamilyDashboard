@@ -73,6 +73,8 @@ export default function FamilyHome() {
 
   /** Receives each chat result; returns the answer object shown in the centre (or null). */
   const onResult = (question, result) => {
+    // Keep clarification in the conversation instead of replacing the dashboard result stage.
+    if (result.shoppingClarification) return null;
     if (result.unanswered) {
       setUnanswered({ question, ...result.unanswered });
       return null;
